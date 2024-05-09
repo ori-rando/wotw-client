@@ -89,6 +89,7 @@ set(
         "game/behaviour_changes/teleporter_map_activation.cpp"
         "game/behaviour_changes/teleporting_oob_fix.cpp"
         "game/behaviour_changes/trials_leaderboards.cpp"
+        "game/behaviour_changes/water_visuals.cpp"
         "game/condition_intercepts/day_night_logic.cpp"
         "game/condition_intercepts/good_hollow.cpp"
         "game/condition_intercepts/grom_built_tps.cpp"
