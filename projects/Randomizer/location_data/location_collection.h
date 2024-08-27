@@ -31,11 +31,14 @@ namespace randomizer::location_data {
 
         std::optional<Location> location(std::string const& name) const;
 
-        std::vector<Location> const& locations(GameArea area) const;
+        std::vector<Location> locations(GameArea area) const;
+
+        std::vector<Location> const& locations() const;
 
     private:
-        std::unordered_map<location_id, std::pair<GameArea, int>> m_id_to_location;
-        std::unordered_map<std::string, std::pair<GameArea, int>> m_name_to_location;
-        std::unordered_map<GameArea, std::vector<Location>> m_area_to_locations;
+        std::vector<Location> m_locations;
+        std::unordered_map<location_id, int> m_id_to_location_index;
+        std::unordered_map<std::string, int> m_name_to_location_index;
+        std::unordered_map<GameArea, std::vector<int>> m_area_to_location_indexes;
     };
 } // namespace randomizer::location_data
