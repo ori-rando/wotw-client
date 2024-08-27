@@ -14,12 +14,12 @@ namespace randomizer::archipelago::ids {
      * Resource items (34 bits):  "10", 16 bits resource type, 16 bits resource value (spirit light only)
      *
      * Resource Types:
-     * 0b001: 100 spirit light
-     * 0b010: gorlek ore
-     * 0b011: keystones
-     * 0b100: shard slots
-     * 0b101: health fragments
-     * 0b110: energy fragments
+     * 0b001: Spirit Light (specify value in the resource value area)
+     * 0b010: Gorlek Ore
+     * 0b011: Keystones
+     * 0b100: Shard Slots
+     * 0b101: Health Fragments
+     * 0b110: Energy Fragments
      *
      * Decimal range: 3363010932375552 - 3363028112244735
      */
