@@ -20,7 +20,7 @@ namespace randomizer::archipelago {
         modloader::info("archipelago", "AP client connected.");
     }
 
-    bool ArchipelagoClient::is_connected() {
+    bool ArchipelagoClient::is_connected() const {
         return m_websocket.getReadyState() == ix::ReadyState::Open;
     }
 

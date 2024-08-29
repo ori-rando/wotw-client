@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Randomizer/location_data/location.h>
+#include <nlohmann/json.hpp>
 #include <variant>
 
 namespace randomizer::archipelago::ids {
@@ -45,20 +46,26 @@ namespace randomizer::archipelago::ids {
         int8_t uber_group;
         int16_t uber_state;
         int8_t value;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Location, uber_group, uber_state, value);
     };
 
     struct BooleanItem {
         int16_t uber_group;
         int16_t uber_state;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(BooleanItem, uber_group, uber_state);
     };
 
     struct ResourceItem {
         ResourceType type;
         int16_t value;  // Only used for Spirit Light
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(ResourceItem, type, value);
     };
 
     archipelago_id_t get_boolean_item_id(int uber_group, int uber_state);
-    archipelago_id_t get_resource_item_id(ResourceType type, archipelago_id_t uid);
+    archipelago_id_t get_resource_item_id(ResourceType type, int16_t value);
     archipelago_id_t get_location_id(const location_data::Location& location);
     std::variant<Location, BooleanItem, ResourceItem> get_item(archipelago_id_t id);
 } // namespace randomizer::archipelago::ids

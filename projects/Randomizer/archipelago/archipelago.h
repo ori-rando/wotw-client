@@ -14,7 +14,7 @@ namespace randomizer::archipelago {
         ArchipelagoClient();
         void connect(std::string_view url, std::string_view password);
         void disconnect();
-        bool is_connected();
+        bool is_connected() const;
 
     private:
         template<typename Jsonable>
