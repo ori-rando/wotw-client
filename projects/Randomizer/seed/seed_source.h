@@ -1,8 +1,9 @@
 #pragma once
 
-#include <string>
 #include <filesystem>
 #include <optional>
+#include <string>
+#include <variant>
 
 namespace randomizer::seed {
     enum class SourceStatus {
@@ -29,6 +30,11 @@ namespace randomizer::seed {
 
         /** Reread the seed source */
         virtual bool allows_rereading() = 0;
+
+        /** Query custom properties for seed sources */
+        std::optional<std::variant<std::string, int, float>> get_property(int property) {
+            return std::nullopt;
+        }
 
         std::optional<std::string> get_error() { return m_error; }
 
@@ -79,6 +85,21 @@ namespace randomizer::seed {
 
     private:
         long m_multiverse_id;
+    };
+
+    class ArchipelagoSeedSource: public SeedSource {
+    public:
+        std::pair<SourceStatus, std::optional<std::string>> poll() override;
+        std::string get_description() override;
+        std::string to_source_string() override;
+        std::optional<long> get_multiverse_id() override;
+        bool allows_rereading() override;
+
+        explicit ArchipelagoSeedSource(const std::string host, const int port, const std::string password);
+
+    private:
+        std::filesystem::path m_path;
+        std::optional<std::string> m_content;
     };
 
     class EmptySeedSource: public SeedSource {

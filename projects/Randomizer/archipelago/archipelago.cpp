@@ -1,10 +1,18 @@
 #include <Core/events/task.h>
+#include <Common/vx.h>
 #include <Modloader/modloader.h>
 #include <Randomizer/archipelago/archipelago.h>
-#include <Randomizer/archipelago/messages.h>
-#include <Randomizer/location_data/location.h>
+#include <Randomizer/archipelago/archipelago_protocol.h>
+#include <Randomizer/archipelago/archipelago_save_meta.h>
 
 namespace randomizer::archipelago {
+    auto archipelago_save_data = std::make_shared<ArchipelagoSaveData>();
+
+    [[maybe_unused]]
+    auto on_game_ready = modloader::event_bus().register_handler(ModloaderEvent::GameReady, [](auto) {
+        core::save_meta::register_slot(SaveMetaSlot::ArchipelagoData, SaveMetaSlotPersistence::None, archipelago_save_data);
+    });
+
     ArchipelagoClient::ArchipelagoClient() {
         m_websocket.setOnMessageCallback([this](const auto& msg) { on_websocket_message(msg); });
     }
@@ -30,9 +38,15 @@ namespace randomizer::archipelago {
                 auto message_string = msg.get()->str;
 
                 try {
-                    nlohmann::json message(message_string);
-                } catch (nlohmann::json::exception e) {
-                    modloader::error("archipelago", std::format("Failed to parse message {}", message_string));
+                    nlohmann::json json(message_string);
+
+                    const auto message = messages::parse_server_message(json);
+
+                    if (message.has_value()) {
+                        handle_server_message(*message);
+                    }
+                } catch (nlohmann::json::exception& e) {
+                    modloader::error("archipelago", std::format("Failed to parse message: {}, {}", e.what(), message_string));
                 }
                 break;
             }
@@ -76,5 +90,22 @@ namespace randomizer::archipelago {
             case ix::WebSocketMessageType::Fragment:
                 break;
         }
+    }
+
+    void ArchipelagoClient::handle_server_message(messages::ap_server_message_t const& message) {
+        message | vx::match {
+            [](const messages::Connected& message) {
+                // TODO
+            },
+            [](const messages::ConnectionRefused& message) {
+                // TODO
+            },
+            [](const messages::RoomInfo& message) {
+                // TODO
+            },
+            [](const messages::ReceivedItem& message) {
+                // TODO
+            },
+        };
     }
 } // namespace randomizer::archipelago

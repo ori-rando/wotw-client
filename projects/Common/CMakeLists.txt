@@ -26,6 +26,7 @@ set(
         "math_utils.h"
         "settings.h"
         "variant_cast.h"
+        "vx.h"
 )
 
 set(

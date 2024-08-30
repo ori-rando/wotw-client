@@ -9,4 +9,5 @@ enum class SaveMetaSlot {
     CheckpointGameStats,
     SaveFileGameStats,
     SeedMetaData,
+    ArchipelagoData,
 };

@@ -10,6 +10,8 @@ set(
         SOURCE_FILES
         "archipelago/archipelago.cpp"
         "archipelago/archipelago_ids.cpp"
+        "archipelago/archipelago_protocol.cpp"
+        "archipelago/archipelago_save_meta.cpp"
         "conditions/condition_override.cpp"
         "conditions/condition_uber_state.cpp"
         "conditions/new_setup_state_override.cpp"
@@ -218,7 +220,7 @@ set(
         PUBLIC_HEADER_FILES
         "archipelago/archipelago.h"
         "archipelago/archipelago_ids.h"
-        "archipelago/messages.h"
+        "archipelago/archipelago_protocol.h"
         "conditions/condition_override.h"
         "conditions/condition_uber_state.h"
         "conditions/new_setup_state_override.h"

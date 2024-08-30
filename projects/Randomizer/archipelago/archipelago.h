@@ -4,6 +4,8 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
+#include "archipelago_protocol.h"
+
 namespace randomizer::archipelago {
     // TODO:
     // - Add save meta slot for AP
@@ -24,6 +26,7 @@ namespace randomizer::archipelago {
         }
 
         void on_websocket_message(ix::WebSocketMessagePtr const& msg);
+        void handle_server_message(messages::ap_server_message_t const& message);
 
         bool m_connected = false;
         bool m_should_connect = false;
