@@ -2045,6 +2045,8 @@ namespace randomizer::seed::legacy_parser {
                     }
 
                     meta.start_position = position;
+                } else if (line.starts_with("APSlot:")) {
+                    meta.archipelago_slot_name = trim_copy(line.substr(sizeof("APSlot:")));
                 }
             }
         }
@@ -2130,6 +2132,8 @@ namespace randomizer::seed::legacy_parser {
                 }
 
                 data->info.meta.start_position = position;
+            } else if (line.starts_with("APSlot:")) {
+                data->info.meta.archipelago_slot_name = trim_copy(line.substr(sizeof("APSlot:")));
             } else if (line.starts_with("timer:")) {
                 std::vector<std::string> parts;
                 auto timer_states = line.substr(6);

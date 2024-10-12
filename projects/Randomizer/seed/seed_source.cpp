@@ -13,7 +13,7 @@ namespace randomizer::seed {
         }
 
         if (source.starts_with("delayed-file:")) {
-            return std::make_shared<DebugDelayedFileSeedSource>(source.substr(13));
+            return std::make_shared<DebugDelayedFileSeedSource>(convert_string_to_wstring(source.substr(13)));
         }
 
         if (source.starts_with("server:")) {
@@ -24,6 +24,32 @@ namespace randomizer::seed {
                 return std::make_shared<ServerSeedSource>(multiverse_id);
             } catch (const std::invalid_argument&) {
                 modloader::error("seed_source", std::format("Parsing multiverse ID '{}' failed", multiverse_id_string));
+            }
+        }
+
+        if (source.starts_with("archipelago:")) {
+            const auto options_string = source.substr(12);
+            std::vector<std::string> options;
+            split_str(options_string, options, '|');
+
+            if (options.size() < 4) {
+                modloader::error("seed_source", "Archipelago seed sources need to give 4 options: file|host|port|password");
+            } else {
+                const auto port_string = options.at(2);
+
+                try {
+                    const auto port = std::stoi(port_string);
+
+                    // TODO: Pipes are not supported as passwords for now since they are almost never used according to Archipelago
+                    return std::make_shared<ArchipelagoSeedSource>(
+                        convert_string_to_wstring(options.at(0)),
+                        options.at(1),
+                        port,
+                        options.at(3)
+                    );
+                } catch (const std::invalid_argument&) {
+                    modloader::error("seed_source", std::format("Parsing port '{}' failed", port_string));
+                }
             }
         }
 
@@ -45,6 +71,16 @@ namespace randomizer::seed {
     std::string ServerSeedSource::to_source_string() { return std::format("server:{}", m_multiverse_id); }
     std::optional<long> ServerSeedSource::get_multiverse_id() { return m_multiverse_id; }
     bool ServerSeedSource::allows_rereading() { return false; }
+    std::string ArchipelagoSeedSource::get_description() { return "AP: " + FileSeedSource::get_description(); }
+    std::string ArchipelagoSeedSource::to_source_string() {
+        return std::format(
+            "archipelago:{},{},{},{}",
+            convert_wstring_to_string(m_path.wstring()),
+            m_host,
+            m_port,
+            m_password
+        );
+    }
 
     std::pair<SourceStatus, std::optional<std::string>> EmptySeedSource::poll() {
         return {SourceStatus::Ready, "// Format Version: 1.0.0"};

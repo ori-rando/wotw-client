@@ -14,7 +14,7 @@ namespace randomizer::archipelago {
     class ArchipelagoClient {
     public:
         ArchipelagoClient();
-        void connect(std::string_view url, std::string_view password);
+        void connect(std::string_view url, std::string_view slot_name, std::string_view password);
         void disconnect();
         bool is_connected() const;
 
@@ -31,6 +31,7 @@ namespace randomizer::archipelago {
         bool m_connected = false;
         bool m_should_connect = false;
         ix::WebSocket m_websocket;
+        std::string m_slot_name;  // aka player name
         std::string m_password;
         int m_last_item_index = 0;
     };

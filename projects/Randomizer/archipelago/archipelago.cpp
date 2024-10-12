@@ -5,6 +5,9 @@
 #include <Randomizer/archipelago/archipelago_protocol.h>
 #include <Randomizer/archipelago/archipelago_save_meta.h>
 
+#define UUID_SYSTEM_GENERATOR
+#include <uuid.h>
+
 namespace randomizer::archipelago {
     auto archipelago_save_data = std::make_shared<ArchipelagoSaveData>();
 
@@ -17,7 +20,8 @@ namespace randomizer::archipelago {
         m_websocket.setOnMessageCallback([this](const auto& msg) { on_websocket_message(msg); });
     }
 
-    void ArchipelagoClient::connect(const std::string_view url, const std::string_view password) {
+    void ArchipelagoClient::connect(const std::string_view url, const std::string_view slot_name, const std::string_view password) {
+        m_slot_name = slot_name;
         m_password = password;
         m_websocket.stop();
         m_websocket.setUrl(std::string(url));
@@ -52,13 +56,16 @@ namespace randomizer::archipelago {
             }
             case ix::WebSocketMessageType::Open: {
                 modloader::info("archipelago", "Connected to server");
+
+                const uuids::uuid uuid = uuids::uuid_system_generator{}();
+
                 send_message(messages::Connect{
                     m_password,
                     "Ori and the Will of the Wisps",
-                    "Player", // TODO
-                    "12345667", // TODO
+                    m_slot_name,
+                    uuids::to_string(uuid),
                     messages::NetworkVersion{0, 5, 0},
-                    0b101,
+                    0b111,
                     {},
                     false,
                 });
@@ -72,7 +79,7 @@ namespace randomizer::archipelago {
                     // If we are in here we did not expect this disconnect, underlying socket will auto reconnect.
                     core::events::schedule_task(3.f, [this] {
                         if (m_should_connect && !is_connected()) {
-                            connect(m_websocket.getUrl(), m_password);
+                            connect(m_websocket.getUrl(), m_slot_name, m_password);
                         }
                     });
                 }
@@ -81,7 +88,7 @@ namespace randomizer::archipelago {
             case ix::WebSocketMessageType::Error:
                 core::events::schedule_task(10.f, [this]() {
                     if (m_should_connect) {
-                        connect(m_websocket.getUrl(), m_password);
+                        connect(m_websocket.getUrl(), m_slot_name, m_password);
                     }
                 });
                 break;

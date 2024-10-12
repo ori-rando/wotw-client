@@ -91,6 +91,7 @@ namespace randomizer::seed {
             int world_index = 0;
             bool race_mode = false;
             GameDifficultySettings game_difficulties;
+            std::optional<std::string> archipelago_slot_name = std::nullopt;
         };
 
         struct SeedInfo {

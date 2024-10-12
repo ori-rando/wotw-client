@@ -372,6 +372,9 @@ target_link_libraries(
         $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
 
+find_package(stduuid CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} stduuid)
+
 message(STATUS "Assigning source groups.")
 
 set_vc_structure("${CMAKE_CURRENT_SOURCE_DIR}" "${SOURCE_FILES};${PUBLIC_HEADER_FILES};${MISC_FILES}")
