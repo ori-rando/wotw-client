@@ -1,5 +1,3 @@
-#pragma once
-
 #include <Modloader/modloader.h>
 #include <Randomizer/archipelago/archipelago_protocol.h>
 #include <nlohmann/json.hpp>
