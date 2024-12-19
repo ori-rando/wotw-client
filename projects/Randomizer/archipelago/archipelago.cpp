@@ -102,15 +102,39 @@ namespace randomizer::archipelago {
     void ArchipelagoClient::handle_server_message(messages::ap_server_message_t const& message) {
         message | vx::match {
             [](const messages::Connected& message) {
-                // TODO
+                // TODO: Define function for checked locations
             },
             [](const messages::ConnectionRefused& message) {
                 // TODO
             },
             [](const messages::RoomInfo& message) {
-                // TODO
+                // TODO: Update NetworkPlayers, and checked locations
             },
-            [](const messages::ReceivedItem& message) {
+            [this](const messages::ReceivedItem& message) {
+                if (message.index == m_last_item_index + 1) {
+                    for (std::size_t index{ 0 }; index < message.items.size(); ++index) {
+                        // ids::get_item(message.items[index].item);
+                        // TODO give item to the player
+                    }
+                    m_last_item_index++;
+                }
+                else if (message.index == 0) {
+                    // TODO resync + set last index to the length of items
+                }
+                else {
+                    send_message("Sync");  // TODO convert to JSON
+                }
+            },
+            [](const messages::LocationInfo& message) {
+                // TODO: Display message, delete location from the cache
+            },
+            [](const messages::RoomUpdate& message) {
+                // TODO: Update NetworkPlayers, and checked locations
+            },
+            [](const messages::PrintJSON& message) {
+                // TODO: Display message (convert it first)
+            },
+            [](const messages::InvalidPacket& message) {
                 // TODO
             },
         };

@@ -22,6 +22,22 @@ namespace randomizer::archipelago::messages {
             return message.get<ReceivedItem>();
         }
 
+        if (command == "LocationInfo") {
+        return message.get<LocationInfo>();
+        }
+
+        if (command == "RoomUpdate") {
+        return message.get<RoomUpdate>();
+        }
+
+        if (command == "PrintJSON") {
+        return message.get<PrintJSON>();
+        }
+
+        if (command == "InvalidPacket") {
+        return message.get<InvalidPacket>();
+        }
+
         modloader::warn("archipelago", std::format("Failed to parse server message: Unknown command {}", command));
 
         return std::nullopt;

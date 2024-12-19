@@ -34,5 +34,7 @@ namespace randomizer::archipelago {
         std::string m_slot_name;  // aka player name
         std::string m_password;
         int m_last_item_index = 0;
+        // TODO Store mapping from player slot to alias
+        // TODO Store the checked locations that are not validated by the server
     };
 } // namespace randomizer::archipelago

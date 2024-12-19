@@ -6,25 +6,13 @@
 #include <variant>
 
 namespace randomizer::archipelago::messages {
+    // Data structures
     struct NetworkVersion {
         int major;
         int minor;
         int patch;
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(NetworkVersion, major, minor, patch);
-    };
-
-    struct Connect {
-        std::string password;
-        std::string game;
-        std::string name;
-        std::string uuid;
-        NetworkVersion version;
-        int items_handling;
-        std::vector<std::string> tags;
-        bool slot_data;
-
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Connect, password, game, name, uuid, version, items_handling, tags, slot_data);
     };
 
     enum SlotType {
@@ -51,6 +39,42 @@ namespace randomizer::archipelago::messages {
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(NetworkPlayer, team, slot, alias, name);
     };
 
+    struct NetworkItem {
+        int item;
+        int location;
+        int player;
+        int flags;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(NetworkItem, item, location, player, flags);
+    };
+
+    // Messages client -> server
+    struct Connect {
+        std::string password;
+        std::string game;
+        std::string name;
+        std::string uuid;
+        NetworkVersion version;
+        int items_handling;
+        std::vector<std::string> tags;
+        bool slot_data;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Connect, password, game, name, uuid, version, items_handling, tags, slot_data);
+    };
+
+    struct LocationChecks {
+        std::vector<int> locations;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(LocationChecks, locations);
+    };
+
+    struct StatusUpdate {
+        int status;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(StatusUpdate, status);
+    };
+
+    // Messages server -> client
     struct Connected {
         int team;
         int slot;
@@ -86,15 +110,6 @@ namespace randomizer::archipelago::messages {
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(RoomInfo, version, generator_version, tags, password, hint_cost, location_check_points, games, datapackage_checksums, seed_name, time);
     };
 
-    struct NetworkItem {
-        int item;
-        int location;
-        int player;
-        int flags;
-
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(NetworkItem, item, location, player, flags);
-    };
-
     struct ReceivedItem {
         int index;
         std::vector<NetworkItem> items;
@@ -102,11 +117,42 @@ namespace randomizer::archipelago::messages {
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(ReceivedItem, index, items);
     };
 
+    struct LocationInfo {
+        std::vector<NetworkItem> locations;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(LocationInfo, locations);
+    };
+
+    struct RoomUpdate {
+        std::vector<NetworkPlayer> players;
+        std::vector<int> checked_locations;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(RoomUpdate, players, checked_locations);
+    };
+
+    struct PrintJSON {
+        std::vector<std::string> data;  // TODO add structure for messages ?
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(PrintJSON, data);
+    };
+
+    struct InvalidPacket {
+        std::string type;
+        std::string original_cmd;
+        std::string text;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(InvalidPacket, type, original_cmd, text);
+    };
+
     using ap_server_message_t = std::variant<
         Connected,
         ConnectionRefused,
         RoomInfo,
-        ReceivedItem
+        ReceivedItem,
+        LocationInfo,
+        RoomUpdate,
+        PrintJSON,
+        InvalidPacket
     >;
 
     std::optional<ap_server_message_t> parse_server_message(const nlohmann::json& message);
