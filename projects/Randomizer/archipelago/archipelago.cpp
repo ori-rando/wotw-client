@@ -4,6 +4,9 @@
 #include <Randomizer/archipelago/archipelago.h>
 #include <Randomizer/archipelago/archipelago_protocol.h>
 #include <Randomizer/archipelago/archipelago_save_meta.h>
+#include "Core/api/uber_states/uber_state.h"
+#include "Core/api/game/player.cpp"
+#include "Randomizer/archipelago/archipelago_ids.h"
 
 #define UUID_SYSTEM_GENERATOR
 #include <uuid.h>
@@ -99,29 +102,72 @@ namespace randomizer::archipelago {
         }
     }
 
+    void ArchipelagoClient::give_item(archipelago::ids::archipelago_id_t id) {
+        std::variant<ids::Location, ids::BooleanItem, ids::ResourceItem> item;
+        item = ids::get_item(id);
+        if (typeid(item) == typeid(ids::BooleanItem)) {    // TODO: fix the type checking
+            core::api::uber_states::UberState{item.uber_group, item.uber_state}.set(1);
+        }
+        else if (typeid(item) == typeid(ids::ResourceItem)) {    // TODO: fix the type checking
+            switch (item.type) {
+                case ids::ResourceType::SpiritLight: {
+                    core::api::game::player::set_spirit_light(core::api::game::player::get_spirit_light() + item.value);
+                    break;
+                }
+                case ids::ResourceType::GorlekOre: {
+                    core::api::game::player::set_ore(core::api::game::player::get_ore() + 1);
+                    break;
+                }
+                case ids::ResourceType::Keystone: {
+                    core::api::game::player::set_keystones(core::api::game::player::get_keystones() + 1);
+                    break;
+                }
+                case ids::ResourceType::ShardSlot: {
+                    core::api::game::player::set_shard_slots(core::api::game::player::get_shard_slots() + 1);
+                    break;
+                }
+                case ids::ResourceType::HealthFragment: {
+                    core::api::game::player::set_max_health(core::api::game::player::get_max_health() + 5);
+                    break;
+                }
+                case ids::ResourceType::EnergyFragment: {
+                    core::api::game::player::set_max_energy(core::api::game::player::get_max_energy() + 0.5);
+                    break;
+                }
+            }
+        }
+        else {
+            modloader::error("archipelago", std::format("Cannot parse item ID: {}", id));
+        }
+        // TODO: inform the player
+    }
+
     void ArchipelagoClient::handle_server_message(messages::ap_server_message_t const& message) {
         message | vx::match {
-            [](const messages::Connected& message) {
-                // TODO: Define function for checked locations
+            [this](const messages::Connected& message) {
+                for (int index{ 0 }; index < message.checked_locations.size(); ++index) {
+                    // TODO: check the locations in the game
+                }
             },
             [](const messages::ConnectionRefused& message) {
-                // TODO
+                modloader::error("archipelago", std::format("Connection refused: {}", message.errors));  // TODO fix: multiple errors possible
             },
             [](const messages::RoomInfo& message) {
-                // TODO: Update NetworkPlayers, and checked locations
+                // TODO
             },
             [this](const messages::ReceivedItem& message) {
                 if (message.index == m_last_item_index + 1) {
-                    for (std::size_t index{ 0 }; index < message.items.size(); ++index) {
-                        // ids::get_item(message.items[index].item);
-                        // TODO give item to the player
-                    }
+                    give_item(message.items[0].item);
                     m_last_item_index++;
                 }
-                else if (message.index == 0) {
-                    // TODO resync + set last index to the length of items
+                else if (message.index == 0) {  // AP server sent all the received items, only add the new ones
+                    std::variant<ids::Location, ids::BooleanItem, ids::ResourceItem> item;
+                    for (int index{ m_last_item_index }; index < message.items.size(); ++index) {
+                        give_item(message.items[index].item);
+                        m_last_item_index++;
+                    }
                 }
-                else {
+                else {  // Ask the AP server to resync the items
                     send_message("Sync");  // TODO convert to JSON
                 }
             },
@@ -129,13 +175,13 @@ namespace randomizer::archipelago {
                 // TODO: Display message, delete location from the cache
             },
             [](const messages::RoomUpdate& message) {
-                // TODO: Update NetworkPlayers, and checked locations
+                // TODO: Update NetworkPlayers, and checked locations (same as in Connected)
             },
             [](const messages::PrintJSON& message) {
                 // TODO: Display message (convert it first)
             },
             [](const messages::InvalidPacket& message) {
-                // TODO
+                modloader::error("archipelago", std::format("{}: Invalid packet sent {}: {}", message.type, message.original_cmd, message.text));
             },
         };
     }
