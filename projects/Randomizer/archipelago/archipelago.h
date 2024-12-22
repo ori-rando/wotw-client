@@ -5,13 +5,8 @@
 #include <string>
 
 #include "archipelago_protocol.h"
-#include "archipelago_ids.h"
 
 namespace randomizer::archipelago {
-    // TODO:
-    // - Add save meta slot for AP
-    // - Keep track of received items from AP
-
     class ArchipelagoClient {
     public:
         ArchipelagoClient();
@@ -26,7 +21,7 @@ namespace randomizer::archipelago {
             m_websocket.send(json.dump());
         }
 
-        void give_item(archipelago::ids::archipelago_id_t id);
+        void give_item(archipelago::messages::NetworkItem const& net_item);
         void on_websocket_message(ix::WebSocketMessagePtr const& msg);
         void handle_server_message(messages::ap_server_message_t const& message);
 
@@ -37,7 +32,6 @@ namespace randomizer::archipelago {
         std::string m_password;
         int m_last_item_index = 0;
         std::vector<int> m_cached_locations;
-        // TODO Store mapping from player slot to alias
-        // TODO Store the checked locations that are not validated by the server
+        std::vector<archipelago::messages::NetworkPlayer> m_players;
     };
 } // namespace randomizer::archipelago

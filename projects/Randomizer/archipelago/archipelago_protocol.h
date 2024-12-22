@@ -74,6 +74,12 @@ namespace randomizer::archipelago::messages {
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(StatusUpdate, status);
     };
 
+    struct Sync {
+        std::string sync;  // TODO dummy argument, change it
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Sync, sync);
+    };
+
     // Messages server -> client
     struct Connected {
         int team;
@@ -131,7 +137,7 @@ namespace randomizer::archipelago::messages {
     };
 
     struct PrintJSON {
-        std::vector<std::string> data;  // TODO add structure for messages ?
+        std::vector<nlohmann::json> data;
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(PrintJSON, data);
     };
