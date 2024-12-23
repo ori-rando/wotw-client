@@ -5,12 +5,14 @@
 #include <Randomizer/archipelago/archipelago_protocol.h>
 #include <Randomizer/archipelago/archipelago_save_meta.h>
 #include "Core/api/uber_states/uber_state.h"
-#include "Core/api/game/player.cpp"
+#include "Core/api/game/player.h"
 #include "Core/api/uber_states/uber_state_handlers.h"
 #include "Core/core.h"
 #include "Core/enums/game_areas.h"
 #include "Randomizer/archipelago/archipelago_ids.h"
 #include "Randomizer/location_data/location.h"
+#include <Randomizer/seed/items/value_modifier.h>
+#include <Randomizer/seed/items/refill.h>
 
 #define UUID_SYSTEM_GENERATOR
 #include <uuid.h>
@@ -144,27 +146,52 @@ namespace randomizer::archipelago {
             [](const ids::ResourceItem& item) {
                 switch (item.type) {
                     case ids::ResourceType::SpiritLight: {
-                        core::api::game::player::set_spirit_light(core::api::game::player::get_spirit_light() + item.value);
+                        const auto assigner = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
+                        assigner->variable = core::api::game::player::spirit_light();
+                        assigner->value.set(item.value);
+
+                        const auto collected = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
+                        collected->variable = core::Property<int>(UberStateGroup::RandoStats, 3);
+                        collected->value.set(item.value);
                         break;
                     }
                     case ids::ResourceType::GorlekOre: {
-                        core::api::game::player::set_ore(core::api::game::player::get_ore() + 1);
-                        break;
+                        const auto adder = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
+                        adder->variable = core::api::game::player::ore();
+                        adder->value.set(1);
+                        const auto collected = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
+                        collected->variable = core::Property<int>(UberStateGroup::RandoStats, 5);
+                        collected->value.set(1);
                     }
                     case ids::ResourceType::Keystone: {
-                        core::api::game::player::set_keystones(core::api::game::player::get_keystones() + 1);
+                        const auto adder = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
+                        adder->variable = core::api::game::player::keystones();
+                        adder->value.set(1);
+                        const auto collected = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
+                        collected->variable = core::Property<int>(UberStateGroup::RandoStats, 0);
+                        collected->value.set(1);
                         break;
                     }
                     case ids::ResourceType::ShardSlot: {
-                        core::api::game::player::set_shard_slots(core::api::game::player::get_shard_slots() + 1);
+                        const auto adder = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
+                        adder->variable = core::api::game::player::shard_slots();
+                        adder->value.set(1);
                         break;
                     }
                     case ids::ResourceType::HealthFragment: {
-                        core::api::game::player::set_max_health(core::api::game::player::get_max_health() + 5);
+                        const auto adder = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
+                        adder->variable = core::api::game::player::max_health();
+                        adder->value.set(5);
+                        const auto refill = std::make_shared<randomizer::seed::items::Refill>();
+                        refill->type = randomizer::seed::items::Refill::RefillType::Health;
                         break;
                     }
                     case ids::ResourceType::EnergyFragment: {
-                        core::api::game::player::set_max_energy(core::api::game::player::get_max_energy() + float(0.5));
+                        const auto adder = std::make_shared<randomizer::seed::items::ValueModifier<float, randomizer::seed::items::ValueOperator::Add>>();
+                        adder->variable = core::api::game::player::max_energy();
+                        adder->value.set(0.5f);
+                        const auto refill = std::make_shared<randomizer::seed::items::Refill>();
+                        refill->type = randomizer::seed::items::Refill::RefillType::Energy;
                         break;
                     }
                 }
