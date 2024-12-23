@@ -23,36 +23,36 @@ namespace randomizer::archipelago {
         core::save_meta::register_slot(SaveMetaSlot::ArchipelagoData, SaveMetaSlotPersistence::None, archipelago_save_data);
     });
 
-    [[maybe_unused]]
-    auto uber_state_bus_handle = core::api::uber_states::single_notification_bus().register_handler(
-        core::api::uber_states::UberState(34543, 11226),
-        [](const core::api::uber_states::UberStateCallbackParams& params, auto) -> void {
-            if (params.state.get<bool>()) {
-                send_message(messages::StatusUpdate{30});
-            }
-        }
-    );
-
-    [[maybe_unused]]
-    auto on_uber_state_changed = core::api::uber_states::notification_bus().register_handler([](auto params) -> void {
-        params.state;  // The uber state that changed
-        params.value;  // The new value
-        auto got = randomizer::archipelago::locations_map.find (core::api::uber_states::UberState(params.state));
-
-        if ( got != randomizer::archipelago::locations_map.end() ) {
-            randomizer::location_data::Location location{
-                "AP",
-                GameArea::Void,
-                randomizer::location_data::LocationType::Unknown,
-                core::api::uber_states::UberStateCondition(params.state)
-            };
-            // TODO Add the location to the cache until it is confirmed by the server, and send the vector of all locations instead
-            send_message(messages::LocationChecks{std::vector<ids::archipelago_id_t>{ids::get_location_id(location)}});
-        };
-    });
-
     ArchipelagoClient::ArchipelagoClient() {
         m_websocket.setOnMessageCallback([this](const auto& msg) { on_websocket_message(msg); });
+
+        [[maybe_unused]]
+        auto uber_state_bus_handle = core::api::uber_states::single_notification_bus().register_handler(
+            core::api::uber_states::UberState(34543, 11226),
+            [this](const core::api::uber_states::UberStateCallbackParams& params, auto) {
+                if (params.state.get<bool>()) {
+                    // Game completion
+                    send_message(messages::StatusUpdate{30});
+                }
+            }
+        );
+
+        [[maybe_unused]]
+        auto on_uber_state_changed = core::api::uber_states::notification_bus().register_handler([this](auto params) {
+            auto got = randomizer::archipelago::locations_map.find (core::api::uber_states::UberState(params.state));
+
+            if ( got != randomizer::archipelago::locations_map.end() ) {
+                randomizer::location_data::Location location{
+                    "AP",
+                    GameArea::Void,
+                    randomizer::location_data::LocationType::Unknown,
+                    core::api::uber_states::UberStateCondition(params.state)
+                };
+                ids::archipelago_id_t location_id {ids::get_location_id(location)};
+                m_cached_locations.push_back(location_id);  // Stores the locations that are checked, but not validated by the server
+                send_message(messages::LocationChecks{std::vector<ids::archipelago_id_t>{m_cached_locations}});
+            };
+        });
     }
 
     void ArchipelagoClient::connect(const std::string_view url, const std::string_view slot_name, const std::string_view password) {
