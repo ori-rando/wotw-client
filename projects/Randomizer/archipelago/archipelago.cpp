@@ -6,7 +6,11 @@
 #include <Randomizer/archipelago/archipelago_save_meta.h>
 #include "Core/api/uber_states/uber_state.h"
 #include "Core/api/game/player.cpp"
+#include "Core/api/uber_states/uber_state_handlers.h"
+#include "Core/core.h"
+#include "Core/enums/game_areas.h"
 #include "Randomizer/archipelago/archipelago_ids.h"
+#include "Randomizer/location_data/location.h"
 
 #define UUID_SYSTEM_GENERATOR
 #include <uuid.h>
@@ -17,6 +21,34 @@ namespace randomizer::archipelago {
     [[maybe_unused]]
     auto on_game_ready = modloader::event_bus().register_handler(ModloaderEvent::GameReady, [](auto) {
         core::save_meta::register_slot(SaveMetaSlot::ArchipelagoData, SaveMetaSlotPersistence::None, archipelago_save_data);
+    });
+
+    [[maybe_unused]]
+    auto uber_state_bus_handle = core::api::uber_states::single_notification_bus().register_handler(
+        core::api::uber_states::UberState(34543, 11226),
+        [](const core::api::uber_states::UberStateCallbackParams& params, auto) -> void {
+            if (params.state.get<bool>()) {
+                send_message(messages::StatusUpdate{30});
+            }
+        }
+    );
+
+    [[maybe_unused]]
+    auto on_uber_state_changed = core::api::uber_states::notification_bus().register_handler([](auto params) -> void {
+        params.state;  // The uber state that changed
+        params.value;  // The new value
+        auto got = randomizer::archipelago::locations_map.find (core::api::uber_states::UberState(params.state));
+
+        if ( got != randomizer::archipelago::locations_map.end() ) {
+            randomizer::location_data::Location location{
+                "AP",
+                GameArea::Void,
+                randomizer::location_data::LocationType::Unknown,
+                core::api::uber_states::UberStateCondition(params.state)
+            };
+            // TODO Add the location to the cache until it is confirmed by the server, and send the vector of all locations instead
+            send_message(messages::LocationChecks{std::vector<ids::archipelago_id_t>{ids::get_location_id(location)}});
+        };
     });
 
     ArchipelagoClient::ArchipelagoClient() {
@@ -142,7 +174,11 @@ namespace randomizer::archipelago {
             },
         };
         // TODO: inform the player
-        // std::format("{} from {}", net_item.item, m_players[net_item.player].alias); // TODO link item id to name
+        core::message_controller().queue_central({
+            // TODO link item id to name
+            .text = core::Property<std::string>(std::format("{} from {}", net_item.item, m_players[net_item.player].alias)),
+            .show_box = true,
+        });
     }
 
     void ArchipelagoClient::handle_server_message(messages::ap_server_message_t const& message) {
@@ -159,7 +195,10 @@ namespace randomizer::archipelago {
                 }
             },
             [](const messages::RoomInfo& message) {
-                // std::format("Hint cost: {}, Location points: {}", message.hint_cost, message.location_check_points);
+                core::message_controller().queue_central({
+                    .text = core::Property<std::string>(std::format("Hint cost: {}, Location points: {}", message.hint_cost, message.location_check_points)),
+                    .show_box = true,
+                });
                 // if (message.seed_name != seed) {
                 //     modloader::warn("archipelago", std::format("Seed from RoomInfo {} does not match the file seed {}", message.seed_name, seed));
                 // }
@@ -184,10 +223,14 @@ namespace randomizer::archipelago {
                 }
             },
             [this](const messages::LocationInfo& message) {
-                // TODO: Display message, delete location from the cache
                 for (int index{ 0 }; index < message.locations.size(); ++index) {
-                    // std::format("{}'s {}", m_players[message.locations[index].player].alias, message.locations[index].item);  // TODO Link id to name
-                    // m_cached_locations.pop(message.locations[index].location)
+                    // TODO Link id to name
+                    // TODO: delete location from the cache
+                    // (message.locations[index].location);
+                    core::message_controller().queue_central({
+                        .text = core::Property<std::string>(std::format("{}'s {}", m_players[message.locations[index].player].alias, message.locations[index].item)),
+                        .show_box = true,
+                    });
                 }
             },
             [this](const messages::RoomUpdate& message) {
@@ -197,8 +240,11 @@ namespace randomizer::archipelago {
             },
             [](const messages::PrintJSON& message) {
                 for (int index{ 0 }; index < message.data.size(); ++index) {
-                    // message.data[index].get<std::string>();
-                // TODO: Display message, use type for different formatting
+                    core::message_controller().queue_central({
+                        .text = core::Property<std::string>(message.data[index].get<std::string>()),
+                        .show_box = true,
+                    });
+                // TODO: Use type for different formatting
                 }
             },
             [](const messages::InvalidPacket& message) {
@@ -209,13 +255,12 @@ namespace randomizer::archipelago {
 } // namespace randomizer::archipelago
 
 // Priority TODO list:
-// Check when a location is found, and send a LocationChecks packet (and add it to the cache)
-// Send a StatusUpdate packet when finished/ready/playing (cf p19)
 // Fix the Sync message
 // Retrieve the credentials from the .wotwr file
-// Implement the messages to the player
 
 // TODO list (not necessary for 1st implementation):
+// Add the checked locations to the cache
+// Send a StatusUpdate packet when ready/playing (cf p19)
 // Check the locations from Connected and RoomUpdate for better coop + new save files
 // Formatting for PrintJSON
 // Datapackage checksum + save it somewhere

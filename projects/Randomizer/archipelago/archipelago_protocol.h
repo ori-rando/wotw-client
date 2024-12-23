@@ -4,6 +4,7 @@
 #include <openssl/bio.h>
 #include <unordered_map>
 #include <variant>
+#include "Randomizer/archipelago/archipelago_ids.h"
 
 namespace randomizer::archipelago::messages {
     // Data structures
@@ -63,7 +64,7 @@ namespace randomizer::archipelago::messages {
     };
 
     struct LocationChecks {
-        std::vector<int> locations;
+        std::vector<ids::archipelago_id_t> locations;
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(LocationChecks, locations);
     };
@@ -85,8 +86,8 @@ namespace randomizer::archipelago::messages {
         int team;
         int slot;
         std::vector<NetworkPlayer> players;
-        std::vector<int> missing_locations;
-        std::vector<int> checked_locations;
+        std::vector<ids::archipelago_id_t> missing_locations;
+        std::vector<ids::archipelago_id_t> checked_locations;
         // slot_data
         std::unordered_map<std::string, NetworkSlot> slot_info;
         int hint_points;
@@ -131,7 +132,7 @@ namespace randomizer::archipelago::messages {
 
     struct RoomUpdate {
         std::vector<NetworkPlayer> players;
-        std::vector<int> checked_locations;
+        std::vector<ids::archipelago_id_t> checked_locations;
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(RoomUpdate, players, checked_locations);
     };
