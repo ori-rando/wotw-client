@@ -138,6 +138,7 @@ namespace randomizer::archipelago {
 
     void ArchipelagoClient::give_item(archipelago::messages::NetworkItem const& net_item) {
         std::variant<ids::Location, ids::BooleanItem, ids::ResourceItem> item;
+        archipelago_save_data -> received_items.push_back(net_item.item);
         item = ids::get_item(net_item.item);
         item | vx::match {
             [](const ids::BooleanItem& item) {
@@ -149,7 +150,6 @@ namespace randomizer::archipelago {
                         const auto assigner = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
                         assigner->variable = core::api::game::player::spirit_light();
                         assigner->value.set(item.value);
-
                         const auto collected = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
                         collected->variable = core::Property<int>(UberStateGroup::RandoStats, 3);
                         collected->value.set(item.value);
@@ -162,6 +162,7 @@ namespace randomizer::archipelago {
                         const auto collected = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
                         collected->variable = core::Property<int>(UberStateGroup::RandoStats, 5);
                         collected->value.set(1);
+                        break;
                     }
                     case ids::ResourceType::Keystone: {
                         const auto adder = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
@@ -286,10 +287,8 @@ namespace randomizer::archipelago {
 // Retrieve the credentials from the .wotwr file
 
 // TODO list (not necessary for 1st implementation):
-// Add the checked locations to the cache
 // Send a StatusUpdate packet when ready/playing (cf p19)
 // Check the locations from Connected and RoomUpdate for better coop + new save files
 // Formatting for PrintJSON
 // Datapackage checksum + save it somewhere
 // Check seed name
-// Release items when finished
