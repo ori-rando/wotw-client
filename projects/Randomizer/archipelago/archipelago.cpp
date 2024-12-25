@@ -11,6 +11,7 @@
 #include "Core/enums/game_areas.h"
 #include "Randomizer/archipelago/archipelago_ids.h"
 #include "Randomizer/location_data/location.h"
+#include "archipelago_protocol.h"
 #include <Randomizer/seed/items/value_modifier.h>
 #include <Randomizer/seed/items/refill.h>
 
@@ -27,6 +28,7 @@ namespace randomizer::archipelago {
 
     ArchipelagoClient::ArchipelagoClient() {
         m_websocket.setOnMessageCallback([this](const auto& msg) { on_websocket_message(msg); });
+        // TODO read data package file to m_data_package_cache
 
         [[maybe_unused]]
         auto uber_state_bus_handle = core::api::uber_states::single_notification_bus().register_handler(
@@ -136,6 +138,38 @@ namespace randomizer::archipelago {
         }
     }
 
+    void ArchipelagoClient::update_data_package(const std::unordered_map<std::string, messages::GameData>& new_data) {
+        for (auto& [game, data]: new_data) {
+            m_data_package_cache.insert_or_assign(game, new_data);
+            m_item_id_to_name.insert_or_assign(game, parse_data_package(data.item_name_to_id));
+            m_location_id_to_name.insert_or_assign(game, parse_data_package(data.location_name_to_id));
+            modloader::info("archipelago", std::format("Data packages for {} updated", game));
+        }
+        // TODO write the data package and the parsed one to the file
+    }
+
+    ArchipelagoClient::IdToName ArchipelagoClient::parse_data_package(const std::unordered_map<std::string, ids::archipelago_id_t>& data) {
+        ArchipelagoClient::IdToName parsed_data;
+        for (auto& [name, id]: data) {
+            parsed_data.insert_or_assign(id, name);
+        }
+        return parsed_data;
+    }
+
+    std::string ArchipelagoClient::get_item_name(ids::archipelago_id_t id, const std::string& game) {
+        return m_item_id_to_name[game][id];
+    }
+
+    std::string ArchipelagoClient::get_item_name(const archipelago::messages::NetworkItem& item) {
+        messages::NetworkPlayer player = m_players[item.player];
+        std::string game = m_slots[player.slot].game;
+        return m_item_id_to_name[game][item.item];
+    }
+
+    std::string ArchipelagoClient::get_location_name(ids::archipelago_id_t id, const std::string& game) {
+        return m_item_id_to_name[game][id];
+    }
+
     void ArchipelagoClient::give_item(archipelago::messages::NetworkItem const& net_item) {
         std::variant<ids::Location, ids::BooleanItem, ids::ResourceItem> item;
         archipelago_save_data -> received_items.push_back(net_item.item);
@@ -204,7 +238,7 @@ namespace randomizer::archipelago {
         // TODO: inform the player
         core::message_controller().queue_central({
             // TODO link item id to name
-            .text = core::Property<std::string>(std::format("{} from {}", net_item.item, m_players[net_item.player].alias)),
+            .text = core::Property<std::string>(std::format("{} from {}", get_item_name(net_item), m_players[net_item.player].alias)),
             .show_box = true,
         });
     }
@@ -232,6 +266,7 @@ namespace randomizer::archipelago {
                 // }
                 // TODO: check if seed name corresponds to the one in the .wotwr file
                 // TODO: checksum for datapackages
+                // TODO: if checksum wrong, send info message + getdatapackage packet
             },
             [this](const messages::ReceivedItem& message) {
                 if (message.index == m_last_item_index + 1) {
@@ -277,6 +312,9 @@ namespace randomizer::archipelago {
             },
             [](const messages::InvalidPacket& message) {
                 modloader::error("archipelago", std::format("{}: Invalid packet sent {}: {}", message.type, message.original_cmd, message.text));
+            },
+            [this](const messages::DataPackage& message) {
+                update_data_package(message.games);
             },
         };
     }

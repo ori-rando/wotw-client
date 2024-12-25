@@ -41,12 +41,20 @@ namespace randomizer::archipelago::messages {
     };
 
     struct NetworkItem {
-        int item;
-        int location;
+        ids::archipelago_id_t item;
+        ids::archipelago_id_t location;
         int player;
         int flags;
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(NetworkItem, item, location, player, flags);
+    };
+
+    struct GameData {
+        std::unordered_map<std::string, ids::archipelago_id_t> item_name_to_id;
+        std::unordered_map<std::string, ids::archipelago_id_t> location_name_to_id;
+        std::string checksum;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(GameData, item_name_to_id, location_name_to_id, checksum);
     };
 
     // Messages client -> server
@@ -79,6 +87,12 @@ namespace randomizer::archipelago::messages {
         std::string sync;  // TODO dummy argument, change it
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(Sync, sync);
+    };
+
+    struct GetDataPackage {
+        std::vector<std::string> games;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(GetDataPackage, games);
     };
 
     // Messages server -> client
@@ -151,6 +165,12 @@ namespace randomizer::archipelago::messages {
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(InvalidPacket, type, original_cmd, text);
     };
 
+    struct DataPackage {
+        std::unordered_map<std::string, GameData> games;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(DataPackage, games);
+    };
+
     using ap_server_message_t = std::variant<
         Connected,
         ConnectionRefused,
@@ -159,7 +179,8 @@ namespace randomizer::archipelago::messages {
         LocationInfo,
         RoomUpdate,
         PrintJSON,
-        InvalidPacket
+        InvalidPacket,
+        DataPackage
     >;
 
     std::optional<ap_server_message_t> parse_server_message(const nlohmann::json& message);

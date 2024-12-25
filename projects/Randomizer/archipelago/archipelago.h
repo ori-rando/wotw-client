@@ -3,6 +3,7 @@
 #include <IXWebSocket.h>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include "Core/api/uber_states/uber_state.h"
 
@@ -24,9 +25,16 @@ namespace randomizer::archipelago {
             m_websocket.send(json.dump());
         }
 
+        using IdToName = std::unordered_map<ids::archipelago_id_t, std::string>;
+
         void give_item(archipelago::messages::NetworkItem const& net_item);
         void on_websocket_message(ix::WebSocketMessagePtr const& msg);
         void handle_server_message(messages::ap_server_message_t const& message);
+        void update_data_package(const std::unordered_map<std::string, messages::GameData>& new_data);
+        IdToName parse_data_package(const std::unordered_map<std::string, ids::archipelago_id_t>& data);
+        std::string get_item_name(ids::archipelago_id_t id, const std::string& game);
+        std::string get_item_name(const archipelago::messages::NetworkItem& item);
+        std::string get_location_name(ids::archipelago_id_t id, const std::string& game);
 
         bool m_connected = false;
         bool m_should_connect = false;
@@ -36,6 +44,12 @@ namespace randomizer::archipelago {
         int m_last_item_index = 0;
         std::vector<ids::archipelago_id_t> m_cached_locations;
         std::vector<archipelago::messages::NetworkPlayer> m_players;
+        std::vector<archipelago::messages::NetworkSlot> m_slots;
+        std::unordered_map<std::string, messages::GameData> m_data_package_cache;
+        std::string m_data_package_path = "AP_data_package";  // TODO
+
+        std::unordered_map<std::string, IdToName> m_item_id_to_name;
+        std::unordered_map<std::string, IdToName> m_location_id_to_name;
     };
 
     std::unordered_set<core::api::uber_states::UberState> locations_map = {
