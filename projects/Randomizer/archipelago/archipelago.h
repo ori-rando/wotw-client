@@ -52,6 +52,7 @@ namespace randomizer::archipelago {
         std::unordered_map<std::string, IdToName> m_location_id_to_name;
     };
 
+    // Generated from loc_data.csv, do not modify the data here.
     std::unordered_set<core::api::uber_states::UberState> locations_map = {
         core::api::uber_states::UberState(21786, 60210),
         core::api::uber_states::UberState(21786, 49485),

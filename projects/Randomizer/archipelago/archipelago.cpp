@@ -156,18 +156,26 @@ namespace randomizer::archipelago {
         return parsed_data;
     }
 
-    std::string ArchipelagoClient::get_item_name(ids::archipelago_id_t id, const std::string& game) {
-        return m_item_id_to_name[game][id];
-    }
-
     std::string ArchipelagoClient::get_item_name(const archipelago::messages::NetworkItem& item) {
         messages::NetworkPlayer player = m_players[item.player];
         std::string game = m_slots[player.slot].game;
-        return m_item_id_to_name[game][item.item];
+        if (m_item_id_to_name[game].contains(item.item)) {  // TODO Maybe not necessary to check that
+            return m_item_id_to_name[game][item.item];
+            }
+        else {
+            modloader::error("archipelago", std::format("Failed to convert item ID {} from game {} to its name.", item.item, game));
+            return std::format("Unknown item name from {}", game);
+        };
     }
 
     std::string ArchipelagoClient::get_location_name(ids::archipelago_id_t id, const std::string& game) {
-        return m_item_id_to_name[game][id];
+        if (m_location_id_to_name[game].contains(id)) {  // TODO Maybe not necessary to check that
+            return m_location_id_to_name[game][id];
+            }
+        else {
+            modloader::error("archipelago", std::format("Failed to convert location ID {} from game {} to its name.", id, game));
+            return std::format("Unknown location name from {}", game);
+        };
     }
 
     void ArchipelagoClient::give_item(archipelago::messages::NetworkItem const& net_item) {
@@ -235,9 +243,7 @@ namespace randomizer::archipelago {
                 modloader::error("archipelago", std::format("AP ID {} corresponds to a location, expected an item.", net_item.item));
             },
         };
-        // TODO: inform the player
         core::message_controller().queue_central({
-            // TODO link item id to name
             .text = core::Property<std::string>(std::format("{} from {}", get_item_name(net_item), m_players[net_item.player].alias)),
             .show_box = true,
         });
@@ -287,11 +293,10 @@ namespace randomizer::archipelago {
             },
             [this](const messages::LocationInfo& message) {
                 for (int index{ 0 }; index < message.locations.size(); ++index) {
-                    // TODO Link id to name
                     // TODO: delete location from the cache
                     // (message.locations[index].location);
                     core::message_controller().queue_central({
-                        .text = core::Property<std::string>(std::format("{}'s {}", m_players[message.locations[index].player].alias, message.locations[index].item)),
+                        .text = core::Property<std::string>(std::format("{} sent to {}", get_item_name(message.locations[index]), m_players[message.locations[index].player].alias)),
                         .show_box = true,
                     });
                 }
