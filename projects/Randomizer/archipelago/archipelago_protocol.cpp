@@ -1,3 +1,4 @@
+#include "archipelago_protocol.h"
 #include <Modloader/modloader.h>
 #include <Randomizer/archipelago/archipelago_protocol.h>
 #include <nlohmann/json.hpp>
@@ -36,6 +37,10 @@ namespace randomizer::archipelago::messages {
 
         if (command == "InvalidPacket") {
         return message.get<InvalidPacket>();
+        }
+
+        if (command == "DataPackage") {
+        return message.get<DataPackage>();
         }
 
         modloader::warn("archipelago", std::format("Failed to parse server message: Unknown command {}", command));

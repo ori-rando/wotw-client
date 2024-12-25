@@ -143,7 +143,7 @@ namespace randomizer::archipelago {
             m_data_package_cache.insert_or_assign(game, new_data);
             m_item_id_to_name.insert_or_assign(game, parse_data_package(data.item_name_to_id));
             m_location_id_to_name.insert_or_assign(game, parse_data_package(data.location_name_to_id));
-            modloader::info("archipelago", std::format("Data packages for {} updated", game));
+            modloader::info("archipelago", std::format("Data packages for {} updated.", game));
         }
         // TODO write the data package and the parsed one to the file
     }
@@ -164,7 +164,7 @@ namespace randomizer::archipelago {
             }
         else {
             modloader::error("archipelago", std::format("Failed to convert item ID {} from game {} to its name.", item.item, game));
-            return std::format("Unknown item name from {}", game);
+            return std::format("Unknown item name from {}.", game);
         };
     }
 
@@ -174,7 +174,7 @@ namespace randomizer::archipelago {
             }
         else {
             modloader::error("archipelago", std::format("Failed to convert location ID {} from game {} to its name.", id, game));
-            return std::format("Unknown location name from {}", game);
+            return std::format("Unknown location name from {}.", game);
         };
     }
 
@@ -244,7 +244,7 @@ namespace randomizer::archipelago {
             },
         };
         core::message_controller().queue_central({
-            .text = core::Property<std::string>(std::format("{} from {}", get_item_name(net_item), m_players[net_item.player].alias)),
+            .text = core::Property<std::string>(std::format("{} from {}.", get_item_name(net_item), m_players[net_item.player].alias)),
             .show_box = true,
         });
     }
@@ -256,23 +256,40 @@ namespace randomizer::archipelago {
                 for (int index{ 0 }; index < message.checked_locations.size(); ++index) {
                     // TODO: check the locations in the game
                 }
+                core::message_controller().queue_central({
+                    .text = core::Property<std::string>("Connected to Archipelago."),
+                    .show_box = true,
+                });
             },
             [](const messages::ConnectionRefused& message) {
                 for (int index{ 0 }; index < message.errors.size(); ++index) {
-                    modloader::error("archipelago", std::format("Connection refused: {}", message.errors[index]));
+                    modloader::error("archipelago", std::format("Connection refused: {}.", message.errors[index]));
+                    core::message_controller().queue_central({
+                        .text = core::Property<std::string>(std::format("Connection to Archipelago refused: {}.", message.errors[index])),
+                        .show_box = true,
+                    });
                 }
             },
-            [](const messages::RoomInfo& message) {
+            [this](const messages::RoomInfo& message) {
                 core::message_controller().queue_central({
-                    .text = core::Property<std::string>(std::format("Hint cost: {}, Location points: {}", message.hint_cost, message.location_check_points)),
+                    .text = core::Property<std::string>(std::format("Hint cost: {}, Location points: {}.", message.hint_cost, message.location_check_points)),
                     .show_box = true,
                 });
+                // TODO: check if seed name corresponds to the one in the .wotwr file
                 // if (message.seed_name != seed) {
                 //     modloader::warn("archipelago", std::format("Seed from RoomInfo {} does not match the file seed {}", message.seed_name, seed));
                 // }
-                // TODO: check if seed name corresponds to the one in the .wotwr file
-                // TODO: checksum for datapackages
-                // TODO: if checksum wrong, send info message + getdatapackage packet
+                std::vector<std::string> outdated_games;
+                for (auto& [game, checksum]: message.datapackage_checksums) {
+                    if (checksum != m_data_package_cache[game].checksum) {
+                        outdated_games.push_back(game);
+                        modloader::info("archipelago", std::format("Data packages for {} are obsolete.", game));
+                    }
+                }
+                if (!outdated_games.empty()) {
+                    send_message(messages::GetDataPackage{outdated_games});
+                    modloader::info("archipelago", "Sent GetDataPackage packet to AP server.");
+                }
             },
             [this](const messages::ReceivedItem& message) {
                 if (message.index == m_last_item_index + 1) {
@@ -289,6 +306,7 @@ namespace randomizer::archipelago {
                 else {
                     // Ask the AP server to resync the items
                     send_message(messages::Sync{"Sync"});  // TODO fix the packet
+                    modloader::info("archipelago", "Sent Sync packet to AP server.");
                 }
             },
             [this](const messages::LocationInfo& message) {
@@ -296,7 +314,7 @@ namespace randomizer::archipelago {
                     // TODO: delete location from the cache
                     // (message.locations[index].location);
                     core::message_controller().queue_central({
-                        .text = core::Property<std::string>(std::format("{} sent to {}", get_item_name(message.locations[index]), m_players[message.locations[index].player].alias)),
+                        .text = core::Property<std::string>(std::format("{} sent to {}.", get_item_name(message.locations[index]), m_players[message.locations[index].player].alias)),
                         .show_box = true,
                     });
                 }
@@ -316,7 +334,7 @@ namespace randomizer::archipelago {
                 }
             },
             [](const messages::InvalidPacket& message) {
-                modloader::error("archipelago", std::format("{}: Invalid packet sent {}: {}", message.type, message.original_cmd, message.text));
+                modloader::error("archipelago", std::format("{}: Invalid packet sent {}: {}.", message.type, message.original_cmd, message.text));
             },
             [this](const messages::DataPackage& message) {
                 update_data_package(message.games);
@@ -325,13 +343,10 @@ namespace randomizer::archipelago {
     }
 } // namespace randomizer::archipelago
 
-// Priority TODO list:
+// TODO list:
 // Fix the Sync message
 // Retrieve the credentials from the .wotwr file
-
-// TODO list (not necessary for 1st implementation):
 // Send a StatusUpdate packet when ready/playing (cf p19)
 // Check the locations from Connected and RoomUpdate for better coop + new save files
 // Formatting for PrintJSON
-// Datapackage checksum + save it somewhere
 // Check seed name
