@@ -28,7 +28,9 @@ namespace randomizer::archipelago {
 
     ArchipelagoClient::ArchipelagoClient() {
         m_websocket.setOnMessageCallback([this](const auto& msg) { on_websocket_message(msg); });
-        // TODO read data package file to m_data_package_cache
+        m_data_package_cache = read_file("ap_data_package.json");
+        m_item_id_to_name = read_file("ap_location_id_to_name.json");
+        m_location_id_to_name = read_file("ap_location_id_to_name.json");
 
         [[maybe_unused]]
         auto uber_state_bus_handle = core::api::uber_states::single_notification_bus().register_handler(
@@ -111,7 +113,7 @@ namespace randomizer::archipelago {
                 break;
             }
             case ix::WebSocketMessageType::Close: {
-                auto closed_reason = std::format("websocket closed '{}': {}", msg->closeInfo.code, msg->closeInfo.reason.c_str());
+                auto closed_reason = std::format("websocket closed '{}': {}", msg->closeInfo.code, msg->closeInfo.reason);
                 modloader::warn("archipelago", closed_reason);
 
                 if (m_should_connect) {
@@ -140,12 +142,14 @@ namespace randomizer::archipelago {
 
     void ArchipelagoClient::update_data_package(const std::unordered_map<std::string, messages::GameData>& new_data) {
         for (auto& [game, data]: new_data) {
-            m_data_package_cache.insert_or_assign(game, new_data);
+            m_data_package_cache.insert_or_assign(game, data);
             m_item_id_to_name.insert_or_assign(game, parse_data_package(data.item_name_to_id));
             m_location_id_to_name.insert_or_assign(game, parse_data_package(data.location_name_to_id));
             modloader::info("archipelago", std::format("Data packages for {} updated.", game));
         }
-        // TODO write the data package and the parsed one to the file
+        write_file(m_data_package_cache, "ap_data_package.json");
+        write_file(m_item_id_to_name, "ap_item_id_to_name.json");
+        write_file(m_location_id_to_name, "ap_location_id_to_name.json");
     }
 
     ArchipelagoClient::IdToName ArchipelagoClient::parse_data_package(const std::unordered_map<std::string, ids::archipelago_id_t>& data) {
@@ -247,6 +251,20 @@ namespace randomizer::archipelago {
             .text = core::Property<std::string>(std::format("{} from {}.", get_item_name(net_item), m_players[net_item.player].alias)),
             .show_box = true,
         });
+    }
+
+    void ArchipelagoClient::write_file(const nlohmann::json& data, const std::string& file_name) {
+        std::ofstream o(m_data_package_path + file_name);
+        o << std::setw(4) << data << std::endl;
+        modloader::info("archipelago", std::format("Write {} in ./archipelago.", file_name));
+    }
+
+    nlohmann::json ArchipelagoClient::read_file(const std::string& file_name) {
+        std::ifstream i(m_data_package_path + file_name);
+        nlohmann::json j;
+        i >> j;
+        modloader::info("archipelago", std::format("Read data from {}.", file_name));
+        return j;
     }
 
     void ArchipelagoClient::handle_server_message(messages::ap_server_message_t const& message) {
