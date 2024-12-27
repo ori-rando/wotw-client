@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 #include <openssl/bio.h>
 #include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include "Randomizer/archipelago/archipelago_ids.h"
 
@@ -72,7 +73,7 @@ namespace randomizer::archipelago::messages {
     };
 
     struct LocationChecks {
-        std::vector<ids::archipelago_id_t> locations;
+        std::unordered_set<ids::archipelago_id_t> locations;
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(LocationChecks, locations);
     };

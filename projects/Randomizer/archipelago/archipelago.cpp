@@ -48,15 +48,16 @@ namespace randomizer::archipelago {
             auto got = randomizer::archipelago::locations_map.find (core::api::uber_states::UberState(params.state));
 
             if ( got != randomizer::archipelago::locations_map.end() ) {
-                randomizer::location_data::Location location{
+                randomizer::location_data::Location location{  // Dummy infos, only the uber states are used
                     "AP",
                     GameArea::Void,
                     randomizer::location_data::LocationType::Unknown,
-                    core::api::uber_states::UberStateCondition(params.state)
+                    core::api::uber_states::UberStateCondition(params.state, BooleanOperator::Greater, params.value)
                 };
                 ids::archipelago_id_t location_id {ids::get_location_id(location)};
-                m_cached_locations.push_back(location_id);  // Stores the locations that are checked, but not validated by the server
-                send_message(messages::LocationChecks{std::vector<ids::archipelago_id_t>{m_cached_locations}});
+                m_cached_locations.insert(location_id);  // Stores the locations that are checked, but not validated by the server
+                send_message(messages::LocationChecks{m_cached_locations});  // TODO cast to vector ?
+                modloader::info("archipelago", std::format("Location checked. State: {}, Group: {}, Value: {}.", params.state.state(), params.state.group_int(), params.value));
             };
         });
     }
@@ -182,6 +183,11 @@ namespace randomizer::archipelago {
         };
     }
 
+    void ArchipelagoClient::collect_location(const ids::archipelago_id_t location_id) {
+        location_data::Location location {ids::location_map[location_id]};
+        core::api::uber_states::UberState(location.condition.state.group_int() , location.condition.state.state()).set(location.condition.value);   
+    }
+
     void ArchipelagoClient::give_item(archipelago::messages::NetworkItem const& net_item) {
         std::variant<ids::Location, ids::BooleanItem, ids::ResourceItem> item;
         archipelago_save_data -> received_items.push_back(net_item.item);
@@ -271,8 +277,8 @@ namespace randomizer::archipelago {
         message | vx::match {
             [this](const messages::Connected& message) {
                 m_players = message.players;
-                for (int index{ 0 }; index < message.checked_locations.size(); ++index) {
-                    // TODO: check the locations in the game
+                for (ids::archipelago_id_t location_id: message.checked_locations) {
+                    collect_location(location_id);
                 }
                 core::message_controller().queue_central({
                     .text = core::Property<std::string>("Connected to Archipelago."),
@@ -280,10 +286,10 @@ namespace randomizer::archipelago {
                 });
             },
             [](const messages::ConnectionRefused& message) {
-                for (int index{ 0 }; index < message.errors.size(); ++index) {
-                    modloader::error("archipelago", std::format("Connection refused: {}.", message.errors[index]));
+                for (const std::string& error: message.errors) {
+                    modloader::error("archipelago", std::format("Connection refused: {}.", error));
                     core::message_controller().queue_central({
-                        .text = core::Property<std::string>(std::format("Connection to Archipelago refused: {}.", message.errors[index])),
+                        .text = core::Property<std::string>(std::format("Connection to Archipelago refused: {}.", error)),
                         .show_box = true,
                     });
                 }
@@ -328,24 +334,25 @@ namespace randomizer::archipelago {
                 }
             },
             [this](const messages::LocationInfo& message) {
-                for (int index{ 0 }; index < message.locations.size(); ++index) {
-                    // TODO: delete location from the cache
-                    // (message.locations[index].location);
+                for (const messages::NetworkItem item: message.locations) {
+                    m_cached_locations.erase(item.location);
                     core::message_controller().queue_central({
-                        .text = core::Property<std::string>(std::format("{} sent to {}.", get_item_name(message.locations[index]), m_players[message.locations[index].player].alias)),
+                        .text = core::Property<std::string>(std::format("{} sent to {}.", get_item_name(item), m_players[item.player].alias)),
                         .show_box = true,
                     });
                 }
             },
             [this](const messages::RoomUpdate& message) {
                 m_players = message.players;
-                // TODO: Update checked locations (same way as in Connected)
-                // TODO: check if new locations are already in cache; in that case remove them ?
+                for (ids::archipelago_id_t location_id: message.checked_locations) {
+                    collect_location(location_id);
+                    m_cached_locations.erase(location_id);  // Remove location from the cache if it existed in it.
+                }
             },
             [](const messages::PrintJSON& message) {
-                for (int index{ 0 }; index < message.data.size(); ++index) {
+                for (const nlohmann::json& text: message.data) {
                     core::message_controller().queue_central({
-                        .text = core::Property<std::string>(message.data[index].get<std::string>()),
+                        .text = core::Property<std::string>(text.get<std::string>()),
                         .show_box = true,
                     });
                 // TODO: Use type for different formatting

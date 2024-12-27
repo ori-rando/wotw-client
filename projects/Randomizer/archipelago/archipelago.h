@@ -28,6 +28,7 @@ namespace randomizer::archipelago {
         using IdToName = std::unordered_map<ids::archipelago_id_t, std::string>;
 
         void give_item(archipelago::messages::NetworkItem const& net_item);
+        void collect_location(ids::archipelago_id_t location_id);
         void on_websocket_message(ix::WebSocketMessagePtr const& msg);
         void handle_server_message(messages::ap_server_message_t const& message);
         void update_data_package(const std::unordered_map<std::string, messages::GameData>& new_data);
@@ -44,7 +45,7 @@ namespace randomizer::archipelago {
         std::string m_slot_name;  // aka player name
         std::string m_password;
         int m_last_item_index = 0;
-        std::vector<ids::archipelago_id_t> m_cached_locations;
+        std::unordered_set<ids::archipelago_id_t> m_cached_locations;
         std::vector<archipelago::messages::NetworkPlayer> m_players;
         std::vector<archipelago::messages::NetworkSlot> m_slots;
         std::unordered_map<std::string, messages::GameData> m_data_package_cache;

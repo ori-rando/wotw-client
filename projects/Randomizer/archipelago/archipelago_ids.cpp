@@ -10,7 +10,6 @@ namespace randomizer::archipelago::ids {
      * Since locations store only the first 8 bits of the uber group, we need to keep a
      * mapping of the Archipelago IDs to the actual locations.
      */
-    std::unordered_map<archipelago_id_t, location_data::Location> location_map;
 
     [maybe_unused] auto on_location_collection_loading = event_bus().register_handler(
         RandomizerEvent::LocationCollectionLoaded,
