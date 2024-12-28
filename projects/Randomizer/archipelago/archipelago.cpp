@@ -184,7 +184,7 @@ namespace randomizer::archipelago {
     }
 
     void ArchipelagoClient::collect_location(const ids::archipelago_id_t location_id) {
-        location_data::Location location {ids::location_map[location_id]};
+        location_data::Location location {ids::get_location_from_id(location_id)};
         core::api::uber_states::UberState(location.condition.state.group_int() , location.condition.state.state()).set(location.condition.value);   
     }
 
@@ -372,6 +372,5 @@ namespace randomizer::archipelago {
 // Fix the Sync message
 // Retrieve the credentials from the .wotwr file
 // Send a StatusUpdate packet when ready/playing (cf p19)
-// Check the locations from Connected and RoomUpdate for better coop + new save files
 // Formatting for PrintJSON
 // Check seed name

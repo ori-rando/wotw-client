@@ -27,8 +27,6 @@ namespace randomizer::archipelago::ids {
 
     constexpr archipelago_id_t BASE_ID = 0b101111110010101001LL << 34; // ori (18 bit)
 
-    std::unordered_map<archipelago_id_t, location_data::Location> location_map;
-
     enum class IdType : int8_t {
         Location = 0b00,
         BooleanItem = 0b01,
@@ -64,4 +62,5 @@ namespace randomizer::archipelago::ids {
     archipelago_id_t get_resource_item_id(ResourceType type, int16_t value);
     archipelago_id_t get_location_id(const location_data::Location& location);
     std::variant<Location, BooleanItem, ResourceItem> get_item(archipelago_id_t id);
+    location_data::Location get_location_from_id(archipelago_id_t location_id);
 } // namespace randomizer::archipelago::ids

@@ -11,6 +11,8 @@ namespace randomizer::archipelago::ids {
      * mapping of the Archipelago IDs to the actual locations.
      */
 
+    std::unordered_map<archipelago_id_t, location_data::Location> location_map;
+
     [maybe_unused] auto on_location_collection_loading = event_bus().register_handler(
         RandomizerEvent::LocationCollectionLoaded,
         EventTiming::Before,
@@ -91,5 +93,9 @@ namespace randomizer::archipelago::ids {
         }
 
         throw std::runtime_error(std::format("Could not process archipelago id {}", id));
+    }
+
+    location_data::Location get_location_from_id(archipelago_id_t location_id) {
+        return location_map[location_id];
     }
 } // namespace randomizer::archipelago::ids
