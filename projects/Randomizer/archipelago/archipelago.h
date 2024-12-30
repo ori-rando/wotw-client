@@ -33,8 +33,8 @@ namespace randomizer::archipelago {
         void handle_server_message(messages::ap_server_message_t const& message);
         void update_data_package(const std::unordered_map<std::string, messages::GameData>& new_data);
         IdToName parse_data_package(const std::unordered_map<std::string, ids::archipelago_id_t>& data);
-        std::string get_item_name(ids::archipelago_id_t id, const std::string& game);
         std::string get_item_name(const archipelago::messages::NetworkItem& item);
+        std::string get_player_name(int player);
         std::string get_location_name(ids::archipelago_id_t id, const std::string& game);
         void write_file(const nlohmann::json& data, const std::string& file_name);
         nlohmann::json read_file(const std::string& file_name);
@@ -56,7 +56,7 @@ namespace randomizer::archipelago {
     };
 
     // Generated from loc_data.csv, do not modify the data here.
-    std::unordered_set<core::api::uber_states::UberState> locations_map = {
+    std::unordered_set<core::api::uber_states::UberState> locations_set = {
         core::api::uber_states::UberState(21786, 60210),
         core::api::uber_states::UberState(21786, 49485),
         core::api::uber_states::UberState(21786, 25761),
