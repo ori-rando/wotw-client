@@ -1,14 +1,15 @@
 #pragma once
 
 #include <IXWebSocket.h>
+#include <filesystem>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include "Core/api/uber_states/uber_state.h"
+#include <Core/api/uber_states/uber_state.h>
 
-#include "Randomizer/archipelago/archipelago_ids.h"
-#include "archipelago_protocol.h"
+#include <Randomizer/archipelago/archipelago_ids.h>
+#include <Randomizer/archipelago/archipelago_protocol.h>
 
 namespace randomizer::archipelago {
     class ArchipelagoClient {
@@ -37,7 +38,7 @@ namespace randomizer::archipelago {
         std::string get_player_name(int player);
         std::string get_location_name(ids::archipelago_id_t id, const std::string& game);
         void write_file(const nlohmann::json& data, const std::string& file_name);
-        nlohmann::json read_file(const std::string& file_name);
+        void read_data_package(const std::string& file_name, auto& data);
 
         bool m_connected = false;
         bool m_should_connect = false;
@@ -49,7 +50,7 @@ namespace randomizer::archipelago {
         std::vector<archipelago::messages::NetworkPlayer> m_players;
         std::vector<archipelago::messages::NetworkSlot> m_slots;
         std::unordered_map<std::string, messages::GameData> m_data_package_cache;
-        std::string m_data_package_path = "./archipelago/";
+        std::filesystem::path m_data_package_path = "./archipelago/";
 
         std::unordered_map<std::string, IdToName> m_item_id_to_name;
         std::unordered_map<std::string, IdToName> m_location_id_to_name;

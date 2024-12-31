@@ -1,6 +1,5 @@
-#include "archipelago_protocol.h"
-#include <Modloader/modloader.h>
 #include <Randomizer/archipelago/archipelago_protocol.h>
+#include <Modloader/modloader.h>
 #include <nlohmann/json.hpp>
 
 namespace randomizer::archipelago::messages {
@@ -24,7 +23,7 @@ namespace randomizer::archipelago::messages {
         }
 
         if (command == "LocationInfo") {
-        return message.get<LocationInfo>();
+            return message.get<LocationInfo>();
         }
 
         if (command == "RoomUpdate") {

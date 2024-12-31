@@ -1,19 +1,22 @@
 #include <Core/events/task.h>
 #include <Common/vx.h>
+#include <Common/ext.h>
 #include <Modloader/modloader.h>
 #include <Randomizer/archipelago/archipelago.h>
 #include <Randomizer/archipelago/archipelago_protocol.h>
 #include <Randomizer/archipelago/archipelago_save_meta.h>
-#include "Core/api/uber_states/uber_state.h"
-#include "Core/api/game/player.h"
-#include "Core/api/uber_states/uber_state_handlers.h"
-#include "Core/core.h"
-#include "Core/enums/game_areas.h"
-#include "Randomizer/archipelago/archipelago_ids.h"
-#include "Randomizer/location_data/location.h"
-#include "archipelago_protocol.h"
+#include <Core/api/uber_states/uber_state.h>
+#include <Core/api/game/player.h>
+#include <Core/api/uber_states/uber_state_handlers.h>
+#include <Core/core.h>
+#include <Core/enums/game_areas.h>
+#include <Randomizer/archipelago/archipelago_ids.h>
+#include <Randomizer/location_data/location.h>
+#include <Randomizer/archipelago/archipelago_protocol.h>
 #include <Randomizer/seed/items/value_modifier.h>
 #include <Randomizer/seed/items/refill.h>
+#include <Core/utils/json_serializers.h>
+#include <nlohmann/detail/conversions/from_json.hpp>
 
 #define UUID_SYSTEM_GENERATOR
 #include <uuid.h>
@@ -28,9 +31,11 @@ namespace randomizer::archipelago {
 
     ArchipelagoClient::ArchipelagoClient() {
         m_websocket.setOnMessageCallback([this](const auto& msg) { on_websocket_message(msg); });
-        m_data_package_cache = read_file("ap_data_package.json");
-        m_item_id_to_name = read_file("ap_location_id_to_name.json");
-        m_location_id_to_name = read_file("ap_location_id_to_name.json");
+
+        // Load files for data packages
+        read_data_package("ap_data_package.json", m_data_package_cache);
+        read_data_package("ap_item_id_to_name.json", m_item_id_to_name);
+        read_data_package("ap_location_id_to_name.json", m_location_id_to_name);
 
         [[maybe_unused]]
         auto uber_state_bus_handle = core::api::uber_states::single_notification_bus().register_handler(
@@ -167,7 +172,7 @@ namespace randomizer::archipelago {
         std::string game = m_slots[player.slot].game;
         if (m_item_id_to_name[game].contains(item.item)) {  // TODO Maybe not necessary to check that
             return m_item_id_to_name[game][item.item];
-            }
+        }
         else {
             modloader::error("archipelago", std::format("Failed to convert item ID {} from game {} to its name.", item.item, game));
             return std::format("Unknown item name from {}.", game);
@@ -181,7 +186,7 @@ namespace randomizer::archipelago {
     std::string ArchipelagoClient::get_location_name(ids::archipelago_id_t id, const std::string& game) {
         if (m_location_id_to_name[game].contains(id)) {  // TODO Maybe not necessary to check that
             return m_location_id_to_name[game][id];
-            }
+        }
         else {
             modloader::error("archipelago", std::format("Failed to convert location ID {} from game {} to its name.", id, game));
             return std::format("Unknown location name from {}.", game);
@@ -205,52 +210,49 @@ namespace randomizer::archipelago {
             [](const ids::ResourceItem& item) {
                 switch (item.type) {
                     case ids::ResourceType::SpiritLight: {
-                        const auto assigner = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
-                        assigner->variable = core::api::game::player::spirit_light();
-                        assigner->value.set(item.value);
-                        const auto collected = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
-                        collected->variable = core::Property<int>(UberStateGroup::RandoStats, 3);
-                        collected->value.set(item.value);
+                        const auto& spirit_light = core::api::game::player::spirit_light();
+                        const auto& spirit_light_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 3);
+
+                        spirit_light.set(spirit_light.get() + item.value);
+                        spirit_light_collected.set<int>(spirit_light_collected.get<int>() + item.value);
                         break;
                     }
                     case ids::ResourceType::GorlekOre: {
-                        const auto adder = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
-                        adder->variable = core::api::game::player::ore();
-                        adder->value.set(1);
-                        const auto collected = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
-                        collected->variable = core::Property<int>(UberStateGroup::RandoStats, 5);
-                        collected->value.set(1);
+                        const auto& gorlek_ore = core::api::game::player::ore();
+                        const auto& gorlek_ore_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 5);
+
+                        gorlek_ore.set(gorlek_ore.get() + 1);
+                        gorlek_ore_collected.set<int>(gorlek_ore_collected.get<int>() + 1);
                         break;
                     }
                     case ids::ResourceType::Keystone: {
-                        const auto adder = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
-                        adder->variable = core::api::game::player::keystones();
-                        adder->value.set(1);
-                        const auto collected = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
-                        collected->variable = core::Property<int>(UberStateGroup::RandoStats, 0);
-                        collected->value.set(1);
+                        const auto& keystone = core::api::game::player::keystones();
+                        const auto& keystone_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 0);
+
+                        keystone.set(keystone.get() + 1);
+                        keystone_collected.set<int>(keystone_collected.get<int>() + 1);
                         break;
                     }
                     case ids::ResourceType::ShardSlot: {
-                        const auto adder = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
-                        adder->variable = core::api::game::player::shard_slots();
-                        adder->value.set(1);
+                        const auto& shard_slot = core::api::game::player::shard_slots();
+
+                        shard_slot.set(shard_slot.get() + 1);
                         break;
                     }
                     case ids::ResourceType::HealthFragment: {
-                        const auto adder = std::make_shared<randomizer::seed::items::ValueModifier<int, randomizer::seed::items::ValueOperator::Add>>();
-                        adder->variable = core::api::game::player::max_health();
-                        adder->value.set(5);
-                        const auto refill = std::make_shared<randomizer::seed::items::Refill>();
-                        refill->type = randomizer::seed::items::Refill::RefillType::Health;
+                        const auto& max_health = core::api::game::player::max_health();
+                        const auto& health = core::api::game::player::health();
+
+                        max_health.set(max_health.get() + 5);
+                        health.set(static_cast<float> (max_health.get()));
                         break;
                     }
                     case ids::ResourceType::EnergyFragment: {
-                        const auto adder = std::make_shared<randomizer::seed::items::ValueModifier<float, randomizer::seed::items::ValueOperator::Add>>();
-                        adder->variable = core::api::game::player::max_energy();
-                        adder->value.set(0.5f);
-                        const auto refill = std::make_shared<randomizer::seed::items::Refill>();
-                        refill->type = randomizer::seed::items::Refill::RefillType::Energy;
+                        const auto& max_energy = core::api::game::player::max_energy();
+                        const auto& energy = core::api::game::player::energy();
+
+                        max_energy.set(max_energy.get() + 0.5f);
+                        energy.set(max_energy.get());
                         break;
                     }
                 }
@@ -265,20 +267,23 @@ namespace randomizer::archipelago {
         });
     }
 
-    void ArchipelagoClient::write_file(const nlohmann::json& data, const std::string& file_name) {
-        // TODO verify that this works, and maybe save it somewhere else
-        std::ofstream o(m_data_package_path + file_name);
-        o << std::setw(4) << data << std::endl;
-        modloader::info("archipelago", std::format("Write {} in ./archipelago.", file_name));
+    void ArchipelagoClient::read_data_package(const std::string& file_name, auto& data) {
+        nlohmann::json j;
+        if (!load_json_file(file_name, j)) {
+            // Something went wrong
+            // Error message is printed to modloader log
+            return;
+        }
+        else {
+            nlohmann::from_json(j, data);
+        }
     }
 
-    nlohmann::json ArchipelagoClient::read_file(const std::string& file_name) {
-        // TODO test this
-        std::ifstream i(m_data_package_path + file_name);
-        nlohmann::json j;
-        i >> j;
-        modloader::info("archipelago", std::format("Read data from {}.", file_name));
-        return j;
+    void ArchipelagoClient::write_file(const nlohmann::json& data, const std::string& file_name) {
+        // TODO verify that this works, and maybe save it somewhere else
+        std::ofstream o(modloader::base_path() / file_name);
+        o << std::setw(4) << data << std::endl;
+        modloader::info("archipelago", std::format("Write {} data package.", file_name));
     }
 
     void ArchipelagoClient::handle_server_message(messages::ap_server_message_t const& message) {

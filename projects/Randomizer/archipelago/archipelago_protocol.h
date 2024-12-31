@@ -5,10 +5,9 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <variant>
-#include "Randomizer/archipelago/archipelago_ids.h"
+#include <Randomizer/archipelago/archipelago_ids.h>
 
 namespace randomizer::archipelago::messages {
-    // Data structures
     struct NetworkVersion {
         int major;
         int minor;
