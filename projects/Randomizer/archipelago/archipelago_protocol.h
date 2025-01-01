@@ -22,6 +22,14 @@ namespace randomizer::archipelago::messages {
         Group = 0b10,
     };
 
+    enum ClientStatus {
+        ClientUnknown = 0,
+        ClientConnected = 5,
+        ClientReady = 10,
+        ClientPlaying = 20,
+        ClientGoal = 30,
+    };
+
     struct NetworkSlot {
         std::string name;
         std::string game;

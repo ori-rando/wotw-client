@@ -6,11 +6,11 @@
 namespace randomizer::archipelago {
     class ArchipelagoSaveData final : public core::save_meta::JsonSaveMetaSerializable {
     public:
-        std::vector<ids::archipelago_id_t> received_items;
+        int last_item_index {0};
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(
             ArchipelagoSaveData,
-            received_items
+            last_item_index
         );
 
         nlohmann::json json_serialize() override;

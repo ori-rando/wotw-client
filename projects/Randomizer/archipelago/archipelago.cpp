@@ -15,6 +15,7 @@
 #include <Randomizer/archipelago/archipelago_protocol.h>
 #include <Randomizer/seed/items/value_modifier.h>
 #include <Randomizer/seed/items/refill.h>
+#include <Randomizer/randomizer.h>
 #include <Core/utils/json_serializers.h>
 #include <nlohmann/detail/conversions/from_json.hpp>
 
@@ -23,6 +24,35 @@
 
 namespace randomizer::archipelago {
     auto archipelago_save_data = std::make_shared<ArchipelagoSaveData>();
+    
+    std::unordered_set<core::api::uber_states::UberState> locations_set;
+    [[maybe_unused]]
+    auto on_location_collection_loading = event_bus().register_handler(
+        RandomizerEvent::LocationCollectionLoaded,
+        EventTiming::Before,
+        [](auto, auto) {
+            locations_set.clear();
+        }
+    );
+
+    [[maybe_unused]]
+    auto on_location_collection_loaded = event_bus().register_handler(
+        RandomizerEvent::LocationCollectionLoaded,
+        EventTiming::After,
+        [](auto, auto) {
+            for (const auto& location: location_collection().locations()) {
+                core::api::uber_states::UberState loc_uber;
+                loc_uber = core::api::uber_states::UberState(location.condition.state.group_int(), location.condition.state.state());
+
+                auto existing_it = locations_set.find(loc_uber);
+                if (existing_it == locations_set.end()) {
+                    locations_set.insert(loc_uber);
+                }
+
+            }
+            modloader::info("archipelago", "Built location set");
+        }
+    );
 
     [[maybe_unused]]
     auto on_game_ready = modloader::event_bus().register_handler(ModloaderEvent::GameReady, [](auto) {
@@ -43,7 +73,7 @@ namespace randomizer::archipelago {
             [this](const core::api::uber_states::UberStateCallbackParams& params, auto) {
                 if (params.state.get<bool>()) {
                     // Game completion
-                    send_message(messages::StatusUpdate{30});
+                    send_message(messages::StatusUpdate{messages::ClientStatus::ClientGoal});
                 }
             }
         );
@@ -51,9 +81,9 @@ namespace randomizer::archipelago {
         // On location checked
         [[maybe_unused]]
         auto on_uber_state_changed = core::api::uber_states::notification_bus().register_handler([this](auto params) {
-            auto got = randomizer::archipelago::locations_set.find (core::api::uber_states::UberState(params.state));
+            auto existing_it = randomizer::archipelago::locations_set.find(core::api::uber_states::UberState(params.state));
 
-            if ( got != randomizer::archipelago::locations_set.end() ) {
+            if (existing_it != randomizer::archipelago::locations_set.end()) {
                 randomizer::location_data::Location location{  // Dummy infos, only the uber states are used
                     "AP",
                     GameArea::Void,
@@ -170,7 +200,8 @@ namespace randomizer::archipelago {
     std::string ArchipelagoClient::get_item_name(const archipelago::messages::NetworkItem& item) {
         messages::NetworkPlayer player = m_players[item.player];
         std::string game = m_slots[player.slot].game;
-        if (m_item_id_to_name[game].contains(item.item)) {  // TODO Maybe not necessary to check that
+        auto existing_it = m_item_id_to_name[game].find(item.item);
+        if (existing_it != m_item_id_to_name[game].end()) {
             return m_item_id_to_name[game][item.item];
         }
         else {
@@ -184,7 +215,8 @@ namespace randomizer::archipelago {
     }
 
     std::string ArchipelagoClient::get_location_name(ids::archipelago_id_t id, const std::string& game) {
-        if (m_location_id_to_name[game].contains(id)) {  // TODO Maybe not necessary to check that
+        auto existing_it = m_location_id_to_name[game].find(id);
+        if (existing_it != m_location_id_to_name[game].end()) {
             return m_location_id_to_name[game][id];
         }
         else {
@@ -196,12 +228,11 @@ namespace randomizer::archipelago {
     void ArchipelagoClient::collect_location(const ids::archipelago_id_t location_id) {
         // Collect locations from RoomUpdate and Connected packets, useful for coop
         location_data::Location location {ids::get_location_from_id(location_id)};
-        core::api::uber_states::UberState(location.condition.state.group_int() , location.condition.state.state()).set(location.condition.value);   
+        core::api::uber_states::UberState(location.condition.state.group_int(), location.condition.state.state()).set(location.condition.value);   
     }
 
     void ArchipelagoClient::give_item(archipelago::messages::NetworkItem const& net_item) {
         std::variant<ids::Location, ids::BooleanItem, ids::ResourceItem> item;
-        archipelago_save_data -> received_items.push_back(net_item.item);
         item = ids::get_item(net_item.item);
         item | vx::match {
             [](const ids::BooleanItem& item) {
@@ -331,15 +362,15 @@ namespace randomizer::archipelago {
                 }
             },
             [this](const messages::ReceivedItem& message) {
-                if (message.index == m_last_item_index + 1) {
+                if (message.index == archipelago_save_data -> last_item_index + 1) {
                     give_item(message.items[0]);
-                    m_last_item_index++;
+                    archipelago_save_data -> last_item_index++;
                 }
                 else if (message.index == 0) {
                     // AP server sent all the received items, only add the new ones
-                    for (int index{ m_last_item_index }; index < message.items.size(); ++index) {
+                    for (int index{archipelago_save_data -> last_item_index}; index < message.items.size(); ++index) {
                         give_item(message.items[index]);
-                        m_last_item_index++;
+                        archipelago_save_data -> last_item_index++;
                     }
                 }
                 else {
