@@ -1,11 +1,12 @@
 #pragma once
 
+#include <Randomizer/archipelago/archipelago_ids.h>
 #include <nlohmann/json.hpp>
 #include <openssl/bio.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <variant>
-#include <Randomizer/archipelago/archipelago_ids.h>
+
 
 namespace randomizer::archipelago::messages {
     struct NetworkVersion {
@@ -92,7 +93,7 @@ namespace randomizer::archipelago::messages {
     };
 
     struct Sync {
-        std::string sync;  // TODO dummy argument, change it
+        std::string sync; // TODO dummy argument, change it
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(Sync, sync);
     };
@@ -128,7 +129,7 @@ namespace randomizer::archipelago::messages {
         NetworkVersion generator_version;
         std::vector<std::string> tags;
         bool password;
-		// permissions
+        // permissions
         int hint_cost;
         int location_check_points;
         std::vector<std::string> games;
@@ -136,7 +137,19 @@ namespace randomizer::archipelago::messages {
         std::string seed_name;
         float time;
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(RoomInfo, version, generator_version, tags, password, hint_cost, location_check_points, games, datapackage_checksums, seed_name, time);
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+            RoomInfo,
+            version,
+            generator_version,
+            tags,
+            password,
+            hint_cost,
+            location_check_points,
+            games,
+            datapackage_checksums,
+            seed_name,
+            time
+        );
     };
 
     struct ReceivedItem {
@@ -179,17 +192,8 @@ namespace randomizer::archipelago::messages {
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(DataPackage, games);
     };
 
-    using ap_server_message_t = std::variant<
-        Connected,
-        ConnectionRefused,
-        RoomInfo,
-        ReceivedItem,
-        LocationInfo,
-        RoomUpdate,
-        PrintJSON,
-        InvalidPacket,
-        DataPackage
-    >;
+    using ap_server_message_t = std::
+        variant<Connected, ConnectionRefused, RoomInfo, ReceivedItem, LocationInfo, RoomUpdate, PrintJSON, InvalidPacket, DataPackage>;
 
     std::optional<ap_server_message_t> parse_server_message(const nlohmann::json& message);
 } // namespace randomizer::archipelago::messages

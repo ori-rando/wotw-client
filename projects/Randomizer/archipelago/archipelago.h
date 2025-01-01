@@ -1,12 +1,13 @@
 #pragma once
 
+#include <Core/api/uber_states/uber_state.h>
 #include <IXWebSocket.h>
 #include <filesystem>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <Core/api/uber_states/uber_state.h>
+
 
 #include <Randomizer/archipelago/archipelago_ids.h>
 #include <Randomizer/archipelago/archipelago_protocol.h>
@@ -43,7 +44,7 @@ namespace randomizer::archipelago {
         bool m_connected = false;
         bool m_should_connect = false;
         ix::WebSocket m_websocket;
-        std::string m_slot_name;  // aka player name
+        std::string m_slot_name; // aka player name
         std::string m_password;
         std::unordered_set<ids::archipelago_id_t> m_cached_locations;
         std::vector<archipelago::messages::NetworkPlayer> m_players;

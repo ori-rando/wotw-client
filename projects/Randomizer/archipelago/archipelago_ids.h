@@ -55,7 +55,7 @@ namespace randomizer::archipelago::ids {
 
     struct ResourceItem {
         ResourceType type;
-        int16_t value;  // Only used for Spirit Light
+        int16_t value; // Only used for Spirit Light
     };
 
     archipelago_id_t get_boolean_item_id(int uber_group, int uber_state);

@@ -1,6 +1,7 @@
-#include <Randomizer/archipelago/archipelago_protocol.h>
 #include <Modloader/modloader.h>
+#include <Randomizer/archipelago/archipelago_protocol.h>
 #include <nlohmann/json.hpp>
+
 
 namespace randomizer::archipelago::messages {
     std::optional<ap_server_message_t> parse_server_message(const nlohmann::json& message) {
@@ -27,19 +28,19 @@ namespace randomizer::archipelago::messages {
         }
 
         if (command == "RoomUpdate") {
-        return message.get<RoomUpdate>();
+            return message.get<RoomUpdate>();
         }
 
         if (command == "PrintJSON") {
-        return message.get<PrintJSON>();
+            return message.get<PrintJSON>();
         }
 
         if (command == "InvalidPacket") {
-        return message.get<InvalidPacket>();
+            return message.get<InvalidPacket>();
         }
 
         if (command == "DataPackage") {
-        return message.get<DataPackage>();
+            return message.get<DataPackage>();
         }
 
         modloader::warn("archipelago", std::format("Failed to parse server message: Unknown command {}", command));
