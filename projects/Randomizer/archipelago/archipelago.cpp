@@ -136,7 +136,7 @@ namespace randomizer::archipelago {
                     uuids::to_string(uuid),
                     messages::NetworkVersion{0, 5, 0},
                     0b111,
-                    {},
+                    {"AP"},
                     false,
                 });
                 break;
@@ -315,6 +315,10 @@ namespace randomizer::archipelago {
                         .text = core::Property<std::string>(std::format("Connected to Archipelago as {}.", m_slot_name)),
                         .show_box = true,
                     });
+                    core::message_controller().queue_central({
+                        .text = core::Property<std::string>(std::format("Current hint points: {}.", message.hint_points)),
+                        .show_box = true,
+                    });
                 },
                 [](const messages::ConnectionRefused& message) {
                     for (const std::string& error: message.errors) {
@@ -326,15 +330,31 @@ namespace randomizer::archipelago {
                     }
                 },
                 [this](const messages::RoomInfo& message) {
+                    modloader::info(
+                        "archipelago", std::format("AP server version: {}.{}.{}", message.version.major, message.version.minor, message.version.patch)
+                    );
+                    modloader::info(
+                        "archipelago",
+                        std::format(
+                            "AP generator version: {}.{}.{}", message.generator_version.major, message.generator_version.minor, message.generator_version.patch
+                        )
+                    );
                     core::message_controller().queue_central({
                         .text = core::Property<std::string>(std::format("Hint cost: {}, Location points: {}.", message.hint_cost, message.location_check_points)
                         ),
                         .show_box = true,
                     });
-                    // TODO: check if seed name corresponds to the one in the .wotwr file
-                    // if (message.seed_name != seed) {
-                    //     modloader::warn("archipelago", std::format("Seed from RoomInfo {} does not match the file seed {}", message.seed_name, seed));
-                    // }
+                    auto seed_data = std::make_shared<randomizer::seed::Seed::Data>();
+                    std::optional<std::string> ap_seed = seed_data->info.meta.archipelago_seed;
+                    if (message.seed_name != ap_seed) {
+                        modloader::warn("archipelago", std::format("Seed from RoomInfo ({}) does not match the seed from the .wotwr file.", message.seed_name));
+                        core::message_controller().queue_central({
+                            .text = core::Property<std::string>(
+                                std::string("The seeds from the file and the server are different.\nCheck that you opened the right file.")
+                            ),
+                            .show_box = true,
+                        });
+                    }
 
                     // Update data package
                     std::vector<std::string> outdated_games;
@@ -403,4 +423,5 @@ namespace randomizer::archipelago {
 // Retrieve the credentials from the .wotwr file
 // Send a StatusUpdate packet when ready/playing (cf p19)
 // Formatting for PrintJSON
-// Check seed name
+// See if stackable upgrades (e.g. health regen, extra djump) need a specific handling. If so, create 4th type of item ?
+// Add death link support (see core/api/game/death_listener + add the tag in Connect packet)

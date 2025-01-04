@@ -2047,6 +2047,8 @@ namespace randomizer::seed::legacy_parser {
                     meta.start_position = position;
                 } else if (line.starts_with("APSlot:")) {
                     meta.archipelago_slot_name = trim_copy(line.substr(sizeof("APSlot:")));
+                } else if (line.starts_with("APSeed:")) {
+                    meta.archipelago_seed = trim_copy(line.substr(sizeof("APSeed:")));
                 }
             }
         }
