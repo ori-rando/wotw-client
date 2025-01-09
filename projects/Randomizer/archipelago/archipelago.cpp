@@ -58,12 +58,12 @@ namespace randomizer::archipelago {
         read_data_package("ap_item_id_to_name.json", m_item_id_to_name);
         read_data_package("ap_location_id_to_name.json", m_location_id_to_name);
 
+        // On game completion
         [[maybe_unused]]
         auto uber_state_bus_handle = core::api::uber_states::single_notification_bus().register_handler(
             core::api::uber_states::UberState(34543, 11226),
             [this](const core::api::uber_states::UberStateCallbackParams& params, auto) {
                 if (params.state.get<bool>()) {
-                    // Game completion
                     send_message(messages::StatusUpdate{messages::ClientStatus::ClientGoal});
                 }
             }
@@ -347,10 +347,10 @@ namespace randomizer::archipelago {
                     auto seed_data = std::make_shared<randomizer::seed::Seed::Data>();
                     std::optional<std::string> ap_seed = seed_data->info.meta.archipelago_seed;
                     if (message.seed_name != ap_seed) {
-                        modloader::warn("archipelago", std::format("Seed from RoomInfo ({}) does not match the seed from the .wotwr file.", message.seed_name));
+                        modloader::warn("archipelago", std::format("Seed from RoomInfo ({}) does not match the seed from the .wotwr file ({}).", message.seed_name, ap_seed.value_or("None")));
                         core::message_controller().queue_central({
                             .text = core::Property<std::string>(
-                                std::string("The seeds from the file and the server are different.\nCheck that you opened the right file.")
+                                std::string("The seeds from the file and the server are different.\nMaybe you opened the wrong .wotwr file.")
                             ),
                             .show_box = true,
                         });

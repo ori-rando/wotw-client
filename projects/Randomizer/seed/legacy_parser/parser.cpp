@@ -2045,6 +2045,12 @@ namespace randomizer::seed::legacy_parser {
                     }
 
                     meta.start_position = position;
+                } else if (line.starts_with("APAddress:")) {
+                    meta.archipelago_address = trim_copy(line.substr(sizeof("APAddress:")));
+                } else if (line.starts_with("APPort:")) {
+                    meta.archipelago_port = trim_copy(line.substr(sizeof("APPort:")));
+                } else if (line.starts_with("APPassword:")) {
+                    meta.archipelago_password = trim_copy(line.substr(sizeof("APPassword:")));
                 } else if (line.starts_with("APSlot:")) {
                     meta.archipelago_slot_name = trim_copy(line.substr(sizeof("APSlot:")));
                 } else if (line.starts_with("APSeed:")) {
