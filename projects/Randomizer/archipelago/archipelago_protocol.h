@@ -76,32 +76,36 @@ namespace randomizer::archipelago::messages {
         int items_handling;
         std::vector<std::string> tags;
         bool slot_data;
+        std::string cmd = "Connect";
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Connect, password, game, name, uuid, version, items_handling, tags, slot_data);
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Connect, cmd, password, game, name, uuid, version, items_handling, tags, slot_data);
     };
 
     struct LocationChecks {
         std::unordered_set<ids::archipelago_id_t> locations;
+        std::string cmd = "LocationChecks";
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(LocationChecks, locations);
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(LocationChecks, cmd, locations);
     };
 
     struct StatusUpdate {
         int status;
+        std::string cmd = "StatusUpdate";
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(StatusUpdate, status);
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(StatusUpdate, cmd, status);
     };
 
     struct Sync {
-        std::string sync; // TODO dummy argument, change it
+        std::string cmd = "Sync";
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Sync, sync);
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Sync, cmd);
     };
 
     struct GetDataPackage {
         std::vector<std::string> games;
+        std::string cmd = "GetDataPackage";
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(GetDataPackage, games);
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(GetDataPackage, cmd, games);
     };
 
     // Messages server -> client

@@ -1,5 +1,6 @@
 #include <Common/ext.h>
 #include <Common/vx.h>
+#include <Core/api/game/game.h>
 #include <Core/api/game/player.h>
 #include <Core/api/uber_states/uber_state.h>
 #include <Core/api/uber_states/uber_state_handlers.h>
@@ -83,13 +84,27 @@ namespace randomizer::archipelago {
                 };
                 ids::archipelago_id_t location_id{ids::get_location_id(location)};
                 m_cached_locations.insert(location_id); // Stores the locations that are checked, but not yet validated by the server: useful for resync
-                send_message(messages::LocationChecks{m_cached_locations}); // TODO cast and send a vector instead ?
+                send_message(messages::LocationChecks{m_cached_locations}); // TODO send a vector instead ?
                 modloader::info(
                     "archipelago",
                     std::format("Location checked. State: {}, Group: {}, Value: {}.", params.state.state(), params.state.group_int(), params.value)
                 );
             };
         });
+
+        // Resync items
+        [[maybe_unused]] auto on_new_game = core::api::game::event_bus().register_handler(
+            GameEvent::NewGameInitialized, EventTiming::After, [this](auto, auto) { ask_resync(); }
+        );
+        [[maybe_unused]] auto on_respawn(core::api::game::event_bus().register_handler(GameEvent::Respawn, EventTiming::After, [this](auto, auto) {
+            ask_resync();
+        }));
+        [[maybe_unused]] auto on_restore_checkpoint(
+            core::api::game::event_bus().register_handler(GameEvent::RestoreCheckpoint, EventTiming::After, [this](auto, auto) { ask_resync(); })
+        );
+        [[maybe_unused]] auto on_save_loaded(
+            core::api::game::event_bus().register_handler(GameEvent::FinishedLoadingSave, EventTiming::After, [this](auto, auto) { ask_resync(); })
+        );
     }
 
     void ArchipelagoClient::connect(const std::string_view url, const std::string_view slot_name, const std::string_view password) {
@@ -303,6 +318,11 @@ namespace randomizer::archipelago {
         modloader::info("archipelago", std::format("Write {} data package.", file_name));
     }
 
+    void ArchipelagoClient::ask_resync() {
+        send_message(messages::Sync{});
+        modloader::info("archipelago", "Sent Sync packet to AP server.");
+    }
+
     void ArchipelagoClient::handle_server_message(messages::ap_server_message_t const& message) {
         message |
             vx::match{
@@ -347,7 +367,12 @@ namespace randomizer::archipelago {
                     auto seed_data = std::make_shared<randomizer::seed::Seed::Data>();
                     std::optional<std::string> ap_seed = seed_data->info.meta.archipelago_seed;
                     if (message.seed_name != ap_seed) {
-                        modloader::warn("archipelago", std::format("Seed from RoomInfo ({}) does not match the seed from the .wotwr file ({}).", message.seed_name, ap_seed.value_or("None")));
+                        modloader::warn(
+                            "archipelago",
+                            std::format(
+                                "Seed from RoomInfo ({}) does not match the seed from the .wotwr file ({}).", message.seed_name, ap_seed.value_or("None")
+                            )
+                        );
                         core::message_controller().queue_central({
                             .text = core::Property<std::string>(
                                 std::string("The seeds from the file and the server are different.\nMaybe you opened the wrong .wotwr file.")
@@ -380,9 +405,7 @@ namespace randomizer::archipelago {
                             archipelago_save_data->last_item_index++;
                         }
                     } else {
-                        // Ask the AP server to resync the items
-                        send_message(messages::Sync{"Sync"}); // TODO fix the packet
-                        modloader::info("archipelago", "Sent Sync packet to AP server.");
+                        ask_resync();
                     }
                 },
                 [this](const messages::LocationInfo& message) {
@@ -419,8 +442,7 @@ namespace randomizer::archipelago {
 } // namespace randomizer::archipelago
 
 // TODO list:
-// Fix the Sync message
-// Retrieve the credentials from the .wotwr file
+// Add the client in the main loop (do it when AP is in the flags ?)
 // Send a StatusUpdate packet when ready/playing (cf p19)
 // Formatting for PrintJSON
 // See if stackable upgrades (e.g. health regen, extra djump) need a specific handling. If so, create 4th type of item ?

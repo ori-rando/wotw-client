@@ -40,6 +40,7 @@ namespace randomizer::archipelago {
         std::string get_location_name(ids::archipelago_id_t id, const std::string& game);
         void write_file(const nlohmann::json& data, const std::string& file_name);
         void read_data_package(const std::string& file_name, auto& data);
+        void ask_resync();
 
         bool m_connected = false;
         bool m_should_connect = false;
