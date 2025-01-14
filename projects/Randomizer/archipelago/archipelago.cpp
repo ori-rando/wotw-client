@@ -235,11 +235,15 @@ namespace randomizer::archipelago {
     }
 
     void ArchipelagoClient::give_item(archipelago::messages::NetworkItem const& net_item) {
-        std::variant<ids::Location, ids::BooleanItem, ids::ResourceItem> item;
+        std::variant<ids::Location, ids::BooleanItem, ids::ResourceItem, ids::UpgradeItem> item;
         item = ids::get_item(net_item.item);
         item |
             vx::match{
                 [](const ids::BooleanItem& item) { core::api::uber_states::UberState{item.uber_group, item.uber_state}.set(1); },
+                [](const ids::UpgradeItem& item) {
+                    core::api::uber_states::UberState item_uberstate {item.uber_group, item.uber_state};
+                    item_uberstate.set(item_uberstate.get() + 1);
+                    },
                 [](const ids::ResourceItem& item) {
                     switch (item.type) {
                         case ids::ResourceType::SpiritLight: {
@@ -445,5 +449,4 @@ namespace randomizer::archipelago {
 // Add the client in the main loop (do it when AP is in the flags ?)
 // Send a StatusUpdate packet when ready/playing (cf p19)
 // Formatting for PrintJSON
-// See if stackable upgrades (e.g. health regen, extra djump) need a specific handling. If so, create 4th type of item ?
 // Add death link support (see core/api/game/death_listener + add the tag in Connect packet)

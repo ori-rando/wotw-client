@@ -31,6 +31,7 @@ namespace randomizer::archipelago::ids {
         Location = 0b00,
         BooleanItem = 0b01,
         ResourceItem = 0b10,
+        UpgradeItem = 0b11,
     };
 
     enum class ResourceType : int16_t {
@@ -58,9 +59,15 @@ namespace randomizer::archipelago::ids {
         int16_t value; // Only used for Spirit Light
     };
 
+    struct UpgradeItem {
+        int16_t uber_group;
+        int16_t uber_state;
+    };
+
     archipelago_id_t get_boolean_item_id(int uber_group, int uber_state);
     archipelago_id_t get_resource_item_id(ResourceType type, int16_t value);
     archipelago_id_t get_location_id(const location_data::Location& location);
-    std::variant<Location, BooleanItem, ResourceItem> get_item(archipelago_id_t id);
+    archipelago_id_t get_upgrade_item_id(int uber_group, int uber_state);
+    std::variant<Location, BooleanItem, ResourceItem, UpgradeItem> get_item(archipelago_id_t id);
     location_data::Location get_location_from_id(archipelago_id_t location_id);
 } // namespace randomizer::archipelago::ids

@@ -53,6 +53,13 @@ namespace randomizer::archipelago::ids {
         return BASE_ID + (static_cast<archipelago_id_t>(IdType::BooleanItem) << 32) + (uber_group << 16) + uber_state;
     }
 
+    archipelago_id_t get_upgrade_item_id(int uber_group, int uber_state) {
+        assert(uber_group <= 0b11111111'11111111);
+        assert(uber_state <= 0b11111111'11111111);
+
+        return BASE_ID + (static_cast<archipelago_id_t>(IdType::UpgradeItem) << 32) + (uber_group << 16) + uber_state;
+    }
+
     archipelago_id_t get_resource_item_id(ResourceType type, int16_t value) {
         return BASE_ID + (static_cast<archipelago_id_t>(IdType::ResourceItem) << 32) + (static_cast<archipelago_id_t>(type) << 16) + value;
     }
@@ -68,7 +75,7 @@ namespace randomizer::archipelago::ids {
         return BASE_ID + (static_cast<archipelago_id_t>(IdType::Location) << 32) + group + state + value;
     }
 
-    std::variant<Location, BooleanItem, ResourceItem> get_item(archipelago_id_t id) {
+    std::variant<Location, BooleanItem, ResourceItem, UpgradeItem> get_item(archipelago_id_t id) {
         const auto id_type = static_cast<IdType>(id >> 32);
 
         switch (id_type) {
@@ -86,6 +93,11 @@ namespace randomizer::archipelago::ids {
             case IdType::ResourceItem:
                 return ResourceItem{
                     static_cast<ResourceType>(id >> 16),
+                    static_cast<int16_t>(id),
+                };
+            case IdType::UpgradeItem:
+                return UpgradeItem{
+                    static_cast<int16_t>(id >> 16),
                     static_cast<int16_t>(id),
                 };
         }
