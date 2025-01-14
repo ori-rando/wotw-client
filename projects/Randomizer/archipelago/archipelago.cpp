@@ -239,11 +239,37 @@ namespace randomizer::archipelago {
         item = ids::get_item(net_item.item);
         item |
             vx::match{
-                [](const ids::BooleanItem& item) { core::api::uber_states::UberState{item.uber_group, item.uber_state}.set(1); },
+                [](const ids::BooleanItem& item) { core::api::uber_states::UberState{item.uber_group, item.uber_state}.set(true); },
                 [](const ids::UpgradeItem& item) {
-                    core::api::uber_states::UberState item_uberstate {item.uber_group, item.uber_state};
-                    item_uberstate.set(item_uberstate.get() + 1);
-                    },
+                    std::vector<core::api::uber_states::UberState> item_uberstates;
+                    item_uberstates.emplace_back(item.uber_group, item.uber_state);
+                    if (item.uber_group == static_cast<int16_t>(UberStateGroup::RandoUpgrade)) {
+                        // Currently this is always true, as all upgrade items have this UberGroup.
+                        switch (item.uber_state) { // Handle upgrades that affect multiple uberstates.
+                            case 48: { // Splinter Shurikens
+                                item_uberstates.emplace_back(UberStateGroup::RandoUpgrade, 49);
+                                break;
+                            }
+                            case 80: { // Skill Velocity
+                                item_uberstates.emplace_back(UberStateGroup::RandoUpgrade, 81);
+                                item_uberstates.emplace_back(UberStateGroup::RandoUpgrade, 82);
+                                item_uberstates.emplace_back(UberStateGroup::RandoUpgrade, 83);
+                                item_uberstates.emplace_back(UberStateGroup::RandoUpgrade, 84);
+                                item_uberstates.emplace_back(UberStateGroup::RandoUpgrade, 86);
+                                item_uberstates.emplace_back(UberStateGroup::RandoUpgrade, 90);
+                                break;
+                            }
+                            case 87: { // Jumpgrade
+                                item_uberstates.emplace_back(UberStateGroup::RandoUpgrade, 88);
+                                item_uberstates.emplace_back(UberStateGroup::RandoUpgrade, 89);
+                                break;
+                            }
+                        }
+                    }
+                    for (auto item_uberstate: item_uberstates) {
+                        item_uberstate.set(item_uberstate.get() + 1);
+                    }
+                },
                 [](const ids::ResourceItem& item) {
                     switch (item.type) {
                         case ids::ResourceType::SpiritLight: {
