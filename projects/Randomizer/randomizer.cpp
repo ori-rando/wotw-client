@@ -13,6 +13,7 @@
 #include <Modloader/app/types/GameController.h>
 #include <Modloader/app/types/UI_Hints.h>
 #include <Modloader/modloader.h>
+#include <Randomizer/archipelago/archipelago.h>
 #include <Randomizer/features/wheel.h>
 #include <Randomizer/game/pickups/quests.h>
 #include <Randomizer/game/shops/shop.h>
@@ -20,6 +21,7 @@
 #include <Randomizer/online/network_monitor.h>
 #include <Randomizer/randomizer.h>
 #include <Randomizer/seed/legacy_parser/parser.h>
+#include <Randomizer/seed/seed_source.h>
 #include <Randomizer/state_data/parser.h>
 #include <Randomizer/text_processors/ability.h>
 #include <Randomizer/text_processors/control.h>
@@ -33,7 +35,6 @@
 #include <fstream>
 #include <utility>
 
-#include "seed/seed_source.h"
 
 namespace randomizer {
     namespace {
@@ -44,6 +45,7 @@ namespace randomizer {
         online::NetworkClient client;
         online::MultiplayerUniverse universe;
         std::shared_ptr<core::text::CompositeTextProcessor> text_processor;
+        archipelago::ArchipelagoClient ap_client;
 
         online::NetworkMonitor monitor;
         core::dev::StatusDisplay status({
@@ -56,9 +58,10 @@ namespace randomizer {
         });
 
         auto seed_save_data = std::make_shared<seed::SaveSlotSeedMetaData>();
+        auto seed_meta = std::make_shared<seed::Seed::Data>()->info.meta;
 
         std::shared_ptr<seed::SeedSource> new_game_seed_source = std::make_shared<seed::EmptySeedSource>();
-        std::string new_game_seed_content;  // Set by spawning_and_preloading.cpp
+        std::string new_game_seed_content; // Set by spawning_and_preloading.cpp
 
         bool reach_check_queued = false;
         bool reach_check_in_progress = false;
@@ -93,6 +96,7 @@ namespace randomizer {
 
         auto on_before_shutdown = core::api::game::event_bus().register_handler(GameEvent::Shutdown, EventTiming::Before, [](auto, auto) {
             server_disconnect();
+            archipelago_client().disconnect();
         });
 
         std::vector<std::function<void()>> input_unlocked_callbacks;
@@ -207,6 +211,12 @@ namespace randomizer {
         auto on_game_ready = modloader::event_bus().register_handler(ModloaderEvent::GameReady, [](auto) {
             monitor.display(&status);
             monitor.network_client(&client);
+
+            // Connect the AP client if AP is in the flags
+            if (std::find(seed_meta.flags.begin(), seed_meta.flags.end(), "AP") != seed_meta.flags.end()) {
+                std::string url = seed_meta.archipelago_address.value_or("archipelago.gg") + ":" + seed_meta.archipelago_port.value_or("38281");
+                archipelago_client().connect(url, seed_meta.archipelago_slot_name.value_or("empty_slot_name"), seed_meta.archipelago_password.value_or(""));
+            }
 
             universe.register_packet_handlers(client);
 
@@ -397,6 +407,8 @@ namespace randomizer {
     seed::ReachCheckResult const& reach_check() { return reach_check_result; }
 
     online::NetworkClient& network_client() { return client; }
+
+    archipelago::ArchipelagoClient& archipelago_client() { return ap_client; }
 
     online::MultiplayerUniverse& multiplayer_universe() { return universe; }
 

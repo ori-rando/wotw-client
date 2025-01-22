@@ -119,6 +119,12 @@ namespace randomizer::archipelago {
         modloader::info("archipelago", "AP client connected.");
     }
 
+    void ArchipelagoClient::disconnect() {
+        m_should_connect = false;
+        m_websocket.stop();
+        modloader::info("archipelago", "AP client disconnected.");
+    }
+
     bool ArchipelagoClient::is_connected() const { return m_websocket.getReadyState() == ix::ReadyState::Open; }
 
     void ArchipelagoClient::on_websocket_message(ix::WebSocketMessagePtr const& msg) {

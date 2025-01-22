@@ -73,7 +73,7 @@ namespace randomizer::online {
         bool wants_connection() const { return m_reconnect_websocket; }
 
         void update();
-        void register_handler(Network::Packet_PacketID packet, handler_callback const& handler);
+        void register_handler(Network::Packet_PacketID type, handler_callback const& handler);
 
         template <typename T>
         void register_handler(Network::Packet_PacketID packet, std::function<void(std::shared_ptr<T> const&)> handler) {

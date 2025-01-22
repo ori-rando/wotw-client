@@ -42,7 +42,6 @@ namespace randomizer::archipelago {
         void read_data_package(const std::string& file_name, auto& data);
         void ask_resync();
 
-        bool m_connected = false;
         bool m_should_connect = false;
         ix::WebSocket m_websocket;
         std::string m_slot_name; // aka player name
