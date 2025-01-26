@@ -213,7 +213,7 @@ namespace randomizer {
             monitor.network_client(&client);
 
             // Connect the AP client if AP is in the flags
-            if (std::find(seed_meta.flags.begin(), seed_meta.flags.end(), "AP") != seed_meta.flags.end()) {
+            if (std::ranges::find(seed_meta.flags, "AP") != seed_meta.flags.end()) {
                 std::string url = seed_meta.archipelago_address.value_or("archipelago.gg") + ":" + seed_meta.archipelago_port.value_or("38281");
                 archipelago_client().connect(url, seed_meta.archipelago_slot_name.value_or("empty_slot_name"), seed_meta.archipelago_password.value_or(""));
             }

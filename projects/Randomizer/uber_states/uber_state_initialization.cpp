@@ -669,7 +669,7 @@ namespace randomizer {
                     },
                     core::Property<double>(
                         [state](const double x) { UberState(42178, state).set(x > 0.5 ? 3 : 1); },
-                        [state] -> double { return UberState(42178, state).get<int>() >= 3 ? 1 : 0; }
+                        [state]() -> double { return UberState(42178, state).get<int>() >= 3 ? 1 : 0; }
                     )
                 );
             }

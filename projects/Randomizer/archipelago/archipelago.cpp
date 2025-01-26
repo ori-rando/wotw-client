@@ -15,7 +15,6 @@
 #include <Randomizer/archipelago/archipelago_save_meta.h>
 #include <Randomizer/location_data/location.h>
 #include <Randomizer/randomizer.h>
-#include <Randomizer/seed/items/refill.h>
 #include <Randomizer/seed/items/value_modifier.h>
 #include <nlohmann/detail/conversions/from_json.hpp>
 
@@ -55,9 +54,9 @@ namespace randomizer::archipelago {
         m_websocket.setOnMessageCallback([this](const auto& msg) { on_websocket_message(msg); });
 
         // Load files for data packages
-        read_data_package("ap_data_package.json", m_data_package_cache);
-        read_data_package("ap_item_id_to_name.json", m_item_id_to_name);
-        read_data_package("ap_location_id_to_name.json", m_location_id_to_name);
+        read_data_package("\\ap_data_package.json", m_data_package_cache);
+        read_data_package("\\ap_item_id_to_name.json", m_item_id_to_name);
+        read_data_package("\\ap_location_id_to_name.json", m_location_id_to_name);
 
         // On game completion
         [[maybe_unused]]
@@ -241,8 +240,7 @@ namespace randomizer::archipelago {
     }
 
     void ArchipelagoClient::give_item(archipelago::messages::NetworkItem const& net_item) {
-        std::variant<ids::Location, ids::BooleanItem, ids::ResourceItem, ids::UpgradeItem> item;
-        item = ids::get_item(net_item.item);
+        std::variant<ids::Location, ids::BooleanItem, ids::ResourceItem, ids::UpgradeItem> item = ids::get_item(net_item.item);
         item |
             vx::match{
                 [](const ids::BooleanItem& item) { core::api::uber_states::UberState{item.uber_group, item.uber_state}.set(true); },
@@ -268,6 +266,9 @@ namespace randomizer::archipelago {
                             case 87: { // Jumpgrade
                                 item_uberstates.emplace_back(UberStateGroup::RandoUpgrade, 88);
                                 item_uberstates.emplace_back(UberStateGroup::RandoUpgrade, 89);
+                                break;
+                            }
+                            default: {
                                 break;
                             }
                         }
