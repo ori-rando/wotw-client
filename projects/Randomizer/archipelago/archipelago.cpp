@@ -54,9 +54,9 @@ namespace randomizer::archipelago {
         m_websocket.setOnMessageCallback([this](const auto& msg) { on_websocket_message(msg); });
 
         // Load files for data packages
-        read_data_package("\\ap_data_package.json", m_data_package_cache);
-        read_data_package("\\ap_item_id_to_name.json", m_item_id_to_name);
-        read_data_package("\\ap_location_id_to_name.json", m_location_id_to_name);
+        read_data_package("ap_data_package.json", m_data_package_cache);
+        read_data_package("ap_item_id_to_name.json", m_item_id_to_name);
+        read_data_package("ap_location_id_to_name.json", m_location_id_to_name);
 
         // On game completion
         [[maybe_unused]]
@@ -64,7 +64,7 @@ namespace randomizer::archipelago {
             core::api::uber_states::UberState(34543, 11226),
             [this](const core::api::uber_states::UberStateCallbackParams& params, auto) {
                 if (params.state.get<bool>()) {
-                    send_message(messages::StatusUpdate{messages::ClientStatus::ClientGoal});
+                    send_message(messages::StatusUpdate{messages::ClientStatus::ClientGoal, "StatusUpdate"});
                 }
             }
         );
@@ -83,7 +83,7 @@ namespace randomizer::archipelago {
                 };
                 ids::archipelago_id_t location_id{ids::get_location_id(location)};
                 m_cached_locations.insert(location_id); // Stores the locations that are checked, but not yet validated by the server: useful for resync
-                send_message(messages::LocationChecks{m_cached_locations}); // TODO send a vector instead ?
+                send_message(messages::LocationChecks{m_cached_locations, "LocationChecks"}); // TODO send a vector instead ?
                 modloader::info(
                     "archipelago",
                     std::format("Location checked. State: {}, Group: {}, Value: {}.", params.state.state(), params.state.group_int(), params.value)
@@ -158,6 +158,7 @@ namespace randomizer::archipelago {
                     0b111,
                     {"AP"},
                     false,
+                    "Connect",
                 });
                 break;
             }
@@ -337,14 +338,14 @@ namespace randomizer::archipelago {
         });
     }
 
+    // TODO Make a dummy file if it does not exist
     void ArchipelagoClient::read_data_package(const std::string& file_name, auto& data) {
         nlohmann::json j;
         if (!load_json_file(file_name, j)) {
             // Something went wrong
             // Error message is printed to modloader log
             return;
-        } else {
-            nlohmann::from_json(j, data);
+        nlohmann::from_json(j, data);
         }
     }
 
@@ -356,7 +357,7 @@ namespace randomizer::archipelago {
     }
 
     void ArchipelagoClient::ask_resync() {
-        send_message(messages::Sync{});
+        send_message(messages::Sync{"Sync"});
         modloader::info("archipelago", "Sent Sync packet to AP server.");
     }
 
@@ -427,7 +428,7 @@ namespace randomizer::archipelago {
                         }
                     }
                     if (!outdated_games.empty()) {
-                        send_message(messages::GetDataPackage{outdated_games});
+                        send_message(messages::GetDataPackage{outdated_games, "GetDataPackage"});
                         modloader::info("archipelago", "Sent GetDataPackage packet to AP server.");
                     }
                 },

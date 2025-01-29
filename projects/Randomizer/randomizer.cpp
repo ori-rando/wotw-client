@@ -150,6 +150,13 @@ namespace randomizer {
             features::wheel::initialize_default_wheel();
             game::shops::reset_shop_data();
             randomizer_seed.grant(core::api::uber_states::UberState(UberStateGroup::RandoEvents, 1), 0);
+
+            // Connect the AP client if AP is in the flags
+            if (std::ranges::find(seed_meta.flags, "AP") != seed_meta.flags.end()) {
+                std::string url = seed_meta.archipelago_address.value_or("archipelago.gg") + ":" + seed_meta.archipelago_port.value_or("38281");
+                archipelago_client().connect(url, seed_meta.archipelago_slot_name.value_or("empty_slot_name"), seed_meta.archipelago_password.value_or(""));
+            }
+
             queue_reach_check();
             event_bus().trigger_event(RandomizerEvent::SeedLoadedPostGrant, EventTiming::Before);
             event_bus().trigger_event(RandomizerEvent::SeedLoadedPostGrant, EventTiming::After);
@@ -211,12 +218,6 @@ namespace randomizer {
         auto on_game_ready = modloader::event_bus().register_handler(ModloaderEvent::GameReady, [](auto) {
             monitor.display(&status);
             monitor.network_client(&client);
-
-            // Connect the AP client if AP is in the flags
-            if (std::ranges::find(seed_meta.flags, "AP") != seed_meta.flags.end()) {
-                std::string url = seed_meta.archipelago_address.value_or("archipelago.gg") + ":" + seed_meta.archipelago_port.value_or("38281");
-                archipelago_client().connect(url, seed_meta.archipelago_slot_name.value_or("empty_slot_name"), seed_meta.archipelago_password.value_or(""));
-            }
 
             universe.register_packet_handlers(client);
 

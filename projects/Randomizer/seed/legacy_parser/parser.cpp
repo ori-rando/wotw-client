@@ -2142,6 +2142,14 @@ namespace randomizer::seed::legacy_parser {
                 data->info.meta.start_position = position;
             } else if (line.starts_with("APSlot:")) {
                 data->info.meta.archipelago_slot_name = trim_copy(line.substr(sizeof("APSlot:")));
+            } else if (line.starts_with("APSeed:")) {
+                data->info.meta.archipelago_seed = trim_copy(line.substr(sizeof("APSeed:")));
+            } else if (line.starts_with("APAddress:")) {
+                data->info.meta.archipelago_address = trim_copy(line.substr(sizeof("APAddress:")));
+            } else if (line.starts_with("APPort:")) {
+                data->info.meta.archipelago_port = trim_copy(line.substr(sizeof("APPort:")));
+            } else if (line.starts_with("APPassword:")) {
+                data->info.meta.archipelago_password = trim_copy(line.substr(sizeof("APPassword:")));
             } else if (line.starts_with("timer:")) {
                 std::vector<std::string> parts;
                 auto timer_states = line.substr(6);
