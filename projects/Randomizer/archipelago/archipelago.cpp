@@ -217,7 +217,7 @@ namespace randomizer::archipelago {
 
     std::string ArchipelagoClient::get_item_name(const archipelago::messages::NetworkItem& item) {
         messages::NetworkPlayer player = m_players[item.player];
-        std::string game = m_slots[player.slot].game;
+        std::string game = m_slots[std::to_string(player.slot)].game;
         auto existing_it = m_item_id_to_name[game].find(item.item);
         if (existing_it != m_item_id_to_name[game].end()) {
             return m_item_id_to_name[game][item.item];
@@ -350,12 +350,11 @@ namespace randomizer::archipelago {
             // Something went wrong
             // Error message is printed to modloader log
             return;
-        nlohmann::from_json(j, data);
         }
+        nlohmann::from_json(j, data);
     }
 
     void ArchipelagoClient::write_file(const nlohmann::json& data, const std::string& file_name) {
-        // TODO verify that this works, and maybe save it somewhere else
         std::ofstream o(modloader::base_path() / file_name);
         o << std::setw(4) << data << std::endl;
         modloader::info("archipelago", std::format("Write {} data package.", file_name));
@@ -371,6 +370,7 @@ namespace randomizer::archipelago {
             vx::match{
                 [this](const messages::Connected& message) {
                     m_players = message.players;
+                    m_slots = message.slot_info;
                     for (ids::archipelago_id_t location_id: message.checked_locations) {
                         collect_location(location_id);
                     }

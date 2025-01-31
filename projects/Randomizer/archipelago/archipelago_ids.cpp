@@ -76,33 +76,30 @@ namespace randomizer::archipelago::ids {
     }
 
     std::variant<Location, BooleanItem, ResourceItem, UpgradeItem> get_item(archipelago_id_t id) {
-
-        switch (static_cast<IdType>(id >> 32)) {
-            case IdType::Location:
+        switch (static_cast<IdType>((id >> 32)%4)) {
+            case IdType::Location: {
                 return Location{
-                    static_cast<int8_t>(id >> 24),
-                    static_cast<int16_t>(id >> 8),
-                    static_cast<int8_t>(id),
+                    static_cast<uint8_t>(id >> 24),
+                    static_cast<uint16_t>(id >> 8),
+                    static_cast<uint8_t>(id),
                 };
-            case IdType::BooleanItem:
-                return BooleanItem{
-                    static_cast<int16_t>(id >> 16),
-                    static_cast<int16_t>(id),
-                };
-            case IdType::ResourceItem:
-                return ResourceItem{
-                    static_cast<ResourceType>(id >> 16),
-                    static_cast<int16_t>(id),
-                };
-            case IdType::UpgradeItem:
-                return UpgradeItem{
-                    static_cast<int16_t>(id >> 16),
-                    static_cast<int16_t>(id),
-                };
+                case IdType::BooleanItem:
+                    return BooleanItem{
+                        static_cast<uint16_t>(id >> 16),
+                        static_cast<uint16_t>(id),
+                    };
+                case IdType::ResourceItem:
+                    return ResourceItem{
+                        static_cast<ResourceType>(id >> 16),
+                        static_cast<uint16_t>(id),
+                    };
+                case IdType::UpgradeItem:
+                    return UpgradeItem{
+                        static_cast<uint16_t>(id >> 16),
+                        static_cast<uint16_t>(id),
+                    };
+            }
         }
-
-        throw std::runtime_error(std::format("Could not process archipelago id {}", id));
     }
-
     location_data::Location get_location_from_id(archipelago_id_t location_id) { return location_map[location_id]; }
 } // namespace randomizer::archipelago::ids

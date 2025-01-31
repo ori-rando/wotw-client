@@ -51,7 +51,7 @@ namespace randomizer::archipelago {
         std::string m_password;
         std::unordered_set<ids::archipelago_id_t> m_cached_locations;
         std::vector<archipelago::messages::NetworkPlayer> m_players;
-        std::vector<archipelago::messages::NetworkSlot> m_slots;
+        std::unordered_map<std::string, archipelago::messages::NetworkSlot> m_slots;
         std::unordered_map<std::string, messages::GameData> m_data_package_cache;
         std::filesystem::path m_data_package_path = "./archipelago/";
 
