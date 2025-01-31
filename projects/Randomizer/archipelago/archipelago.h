@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Core/api/uber_states/uber_state.h>
+#include <Modloader/modloader.h>
 #include <IXWebSocket.h>
 #include <filesystem>
 #include <nlohmann/json.hpp>
@@ -24,8 +25,8 @@ namespace randomizer::archipelago {
         template<typename Jsonable>
         void send_message(const Jsonable& message) {
             const nlohmann::json json(message);
-            modloader::info("test", json.dump());
-            m_websocket.send(json.dump());
+            modloader::info("Send message", "[" + json.dump() + "]");
+            m_websocket.send("[" + json.dump() + "]");
         }
 
         using IdToName = std::unordered_map<ids::archipelago_id_t, std::string>;

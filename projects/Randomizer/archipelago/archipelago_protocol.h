@@ -13,8 +13,26 @@ namespace randomizer::archipelago::messages {
         int major;
         int minor;
         int build;
+        std::string version_class;
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(NetworkVersion, major, minor, build);
+        // The macro cannot be used, because an argument is called class.
+        template<typename BasicJsonType>
+        friend void to_json(BasicJsonType& nlohmann_json_j, const NetworkVersion& nlohmann_json_t)
+        {
+            nlohmann_json_j["major"] = nlohmann_json_t.major;
+            nlohmann_json_j["minor"] = nlohmann_json_t.minor;
+            nlohmann_json_j["build"] = nlohmann_json_t.build;
+            nlohmann_json_j["class"] = nlohmann_json_t.version_class;
+        }
+
+        template<typename BasicJsonType>
+        friend void from_json(const BasicJsonType& nlohmann_json_j, NetworkVersion& nlohmann_json_t)
+        {
+            nlohmann_json_t.major = nlohmann_json_j.at("major");
+            nlohmann_json_t.minor = nlohmann_json_j.at("minor");
+            nlohmann_json_t.build = nlohmann_json_j.at("build");
+            nlohmann_json_t.version_class = nlohmann_json_j.at("class");
+        }
     };
 
     enum SlotType {
@@ -64,6 +82,12 @@ namespace randomizer::archipelago::messages {
         std::string checksum;
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(GameData, item_name_to_id, location_name_to_id, checksum);
+    };
+
+    struct DataPack {
+        std::unordered_map<std::string, GameData> games;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(DataPack, games);
     };
 
     // Messages client -> server
@@ -177,7 +201,7 @@ namespace randomizer::archipelago::messages {
     };
 
     struct PrintJSON {
-        std::vector<nlohmann::json> data;
+        std::vector<std::string> data;
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(PrintJSON, data);
     };
@@ -191,9 +215,9 @@ namespace randomizer::archipelago::messages {
     };
 
     struct DataPackage {
-        std::unordered_map<std::string, GameData> games;
+        DataPack data;
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(DataPackage, games);
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(DataPackage, data);
     };
 
     using ap_server_message_t = std::

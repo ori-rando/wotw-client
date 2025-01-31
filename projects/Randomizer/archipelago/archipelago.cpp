@@ -130,12 +130,12 @@ namespace randomizer::archipelago {
         switch (msg->type) {
             case ix::WebSocketMessageType::Message: {
                 auto message_string = msg.get()->str;
-                modloader::info("test", message_string);
+                modloader::info("Received message", message_string);
 
                 try {
                     nlohmann::json json;
                     json = nlohmann::json::parse(message_string.substr(1, message_string.length()-2));
-                    modloader::info("test", json.dump());
+                    modloader::info("Received + parse", json.dump());
 
                     const auto message = messages::parse_server_message(json);
 
@@ -157,7 +157,7 @@ namespace randomizer::archipelago {
                     "Ori and the Will of the Wisps",
                     m_slot_name,
                     uuids::to_string(uuid),
-                    messages::NetworkVersion{0, 5, 0},
+                    messages::NetworkVersion{0, 5, 0, "Version"},
                     0b111,
                     {"AP"},
                     false,
@@ -462,9 +462,9 @@ namespace randomizer::archipelago {
                     }
                 },
                 [](const messages::PrintJSON& message) {
-                    for (const nlohmann::json& text: message.data) {
+                    for (const std::string& text: message.data) {
                         core::message_controller().queue_central({
-                            .text = core::Property<std::string>(text.get<std::string>()),
+                            .text = core::Property<std::string>(text),
                             .show_box = true,
                         });
                         // TODO: Use type for different formatting
@@ -473,7 +473,7 @@ namespace randomizer::archipelago {
                 [](const messages::InvalidPacket& message) {
                     modloader::error("archipelago", std::format("{}: Invalid packet sent {}: {}.", message.type, message.original_cmd, message.text));
                 },
-                [this](const messages::DataPackage& message) { update_data_package(message.games); },
+                [this](const messages::DataPackage& message) { update_data_package(message.data.games); },
             };
     }
 } // namespace randomizer::archipelago
