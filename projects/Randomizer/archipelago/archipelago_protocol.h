@@ -12,9 +12,9 @@ namespace randomizer::archipelago::messages {
     struct NetworkVersion {
         int major;
         int minor;
-        int patch;
+        int build;
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(NetworkVersion, major, minor, patch);
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(NetworkVersion, major, minor, build);
     };
 
     enum SlotType {
@@ -184,7 +184,7 @@ namespace randomizer::archipelago::messages {
 
     struct InvalidPacket {
         std::string type;
-        std::string original_cmd;
+        std::string original_cmd;  // TODO can be null, which causes the parsing to fail
         std::string text;
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(InvalidPacket, type, original_cmd, text);

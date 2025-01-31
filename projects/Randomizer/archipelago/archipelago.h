@@ -24,6 +24,7 @@ namespace randomizer::archipelago {
         template<typename Jsonable>
         void send_message(const Jsonable& message) {
             const nlohmann::json json(message);
+            modloader::info("test", json.dump());
             m_websocket.send(json.dump());
         }
 

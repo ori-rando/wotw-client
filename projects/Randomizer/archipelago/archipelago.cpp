@@ -130,9 +130,12 @@ namespace randomizer::archipelago {
         switch (msg->type) {
             case ix::WebSocketMessageType::Message: {
                 auto message_string = msg.get()->str;
+                modloader::info("test", message_string);
 
                 try {
-                    nlohmann::json json(message_string);
+                    nlohmann::json json;
+                    json = nlohmann::json::parse(message_string.substr(1, message_string.length()-2));
+                    modloader::info("test", json.dump());
 
                     const auto message = messages::parse_server_message(json);
 
@@ -389,21 +392,17 @@ namespace randomizer::archipelago {
                 },
                 [this](const messages::RoomInfo& message) {
                     modloader::info(
-                        "archipelago", std::format("AP server version: {}.{}.{}", message.version.major, message.version.minor, message.version.patch)
+                        "archipelago", std::format("AP server version: {}.{}.{}", message.version.major, message.version.minor, message.version.build)
                     );
                     modloader::info(
                         "archipelago",
                         std::format(
-                            "AP generator version: {}.{}.{}", message.generator_version.major, message.generator_version.minor, message.generator_version.patch
+                            "AP generator version: {}.{}.{}", message.generator_version.major, message.generator_version.minor, message.generator_version.build
                         )
                     );
-                    core::message_controller().queue_central({
-                        .text = core::Property<std::string>(std::format("Hint cost: {}, Location points: {}.", message.hint_cost, message.location_check_points)
-                        ),
-                        .show_box = true,
-                    });
-                    auto seed_data = std::make_shared<randomizer::seed::Seed::Data>();
-                    std::optional<std::string> ap_seed = seed_data->info.meta.archipelago_seed;
+                    modloader::info("archipelago", std::format("Hint cost: {}, Location points: {}.", message.hint_cost, message.location_check_points));
+
+                    std::optional<std::string> ap_seed = randomizer::game_seed().info().meta.archipelago_seed;
                     if (message.seed_name != ap_seed) {
                         modloader::warn(
                             "archipelago",

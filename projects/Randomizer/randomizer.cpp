@@ -58,7 +58,6 @@ namespace randomizer {
         });
 
         auto seed_save_data = std::make_shared<seed::SaveSlotSeedMetaData>();
-        auto seed_meta = std::make_shared<seed::Seed::Data>()->info.meta;
 
         std::shared_ptr<seed::SeedSource> new_game_seed_source = std::make_shared<seed::EmptySeedSource>();
         std::string new_game_seed_content; // Set by spawning_and_preloading.cpp
@@ -151,12 +150,6 @@ namespace randomizer {
             game::shops::reset_shop_data();
             randomizer_seed.grant(core::api::uber_states::UberState(UberStateGroup::RandoEvents, 1), 0);
 
-            // Connect the AP client if AP is in the flags
-            if (std::ranges::find(seed_meta.flags, "AP") != seed_meta.flags.end()) {
-                std::string url = seed_meta.archipelago_address.value_or("archipelago.gg") + ":" + seed_meta.archipelago_port.value_or("38281");
-                archipelago_client().connect(url, seed_meta.archipelago_slot_name.value_or("empty_slot_name"), seed_meta.archipelago_password.value_or(""));
-            }
-
             queue_reach_check();
             event_bus().trigger_event(RandomizerEvent::SeedLoadedPostGrant, EventTiming::Before);
             event_bus().trigger_event(RandomizerEvent::SeedLoadedPostGrant, EventTiming::After);
@@ -181,6 +174,13 @@ namespace randomizer {
             load_seed(false);
 
             core::api::game::player::shard_slots().set(3);
+
+            // Connect the AP client if AP is in the flags
+            auto seed_meta = randomizer_seed.info().meta;
+            if (std::ranges::find(seed_meta.flags, "AP") != seed_meta.flags.end()) {
+                std::string url = "wss://" + seed_meta.archipelago_address.value_or("archipelago.gg") + ":" + seed_meta.archipelago_port.value_or("38281");
+                archipelago_client().connect(url, seed_meta.archipelago_slot_name.value_or("empty_slot_name"), seed_meta.archipelago_password.value_or(""));
+            }
         });
 
         auto on_fixed_update = core::api::game::event_bus().register_handler(GameEvent::FixedUpdate, EventTiming::Before, [](auto, auto) {
