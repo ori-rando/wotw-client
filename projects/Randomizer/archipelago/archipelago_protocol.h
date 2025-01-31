@@ -90,6 +90,12 @@ namespace randomizer::archipelago::messages {
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(DataPack, games);
     };
 
+    struct JSONMessage {
+        std::string text;
+
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(JSONMessage, text);
+    };
+
     // Messages client -> server
     struct Connect {
         std::string password;
@@ -180,11 +186,11 @@ namespace randomizer::archipelago::messages {
         );
     };
 
-    struct ReceivedItem {
+    struct ReceivedItems {
         int index;
         std::vector<NetworkItem> items;
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(ReceivedItem, index, items);
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(ReceivedItems, index, items);
     };
 
     struct LocationInfo {
@@ -201,7 +207,7 @@ namespace randomizer::archipelago::messages {
     };
 
     struct PrintJSON {
-        std::vector<std::string> data;
+        std::vector<JSONMessage> data;
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(PrintJSON, data);
     };
@@ -221,7 +227,7 @@ namespace randomizer::archipelago::messages {
     };
 
     using ap_server_message_t = std::
-        variant<Connected, ConnectionRefused, RoomInfo, ReceivedItem, LocationInfo, RoomUpdate, PrintJSON, InvalidPacket, DataPackage>;
+        variant<Connected, ConnectionRefused, RoomInfo, ReceivedItems, LocationInfo, RoomUpdate, PrintJSON, InvalidPacket, DataPackage>;
 
     std::optional<ap_server_message_t> parse_server_message(const nlohmann::json& message);
 } // namespace randomizer::archipelago::messages

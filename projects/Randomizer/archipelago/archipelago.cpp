@@ -127,20 +127,22 @@ namespace randomizer::archipelago {
     bool ArchipelagoClient::is_connected() const { return m_websocket.getReadyState() == ix::ReadyState::Open; }
 
     void ArchipelagoClient::on_websocket_message(ix::WebSocketMessagePtr const& msg) {
+        // TODO remove debug
         switch (msg->type) {
             case ix::WebSocketMessageType::Message: {
                 auto message_string = msg.get()->str;
-                modloader::info("Received message", message_string);
+                modloader::info("Received total message", message_string);
 
                 try {
-                    nlohmann::json json;
-                    json = nlohmann::json::parse(message_string.substr(1, message_string.length()-2));
-                    modloader::info("Received + parse", json.dump());
+                    nlohmann::json json = nlohmann::json::parse(message_string);
+                    for (auto& packet : json) {
+                        modloader::info("Received single message", packet.dump());
 
-                    const auto message = messages::parse_server_message(json);
+                        const auto message = messages::parse_server_message(packet);
 
-                    if (message.has_value()) {
-                        handle_server_message(*message);
+                        if (message.has_value()) {
+                            handle_server_message(*message);
+                        }
                     }
                 } catch (nlohmann::json::exception& e) {
                     modloader::error("archipelago", std::format("Failed to parse message: {}, {}", e.what(), message_string));
@@ -431,7 +433,7 @@ namespace randomizer::archipelago {
                         modloader::info("archipelago", "Sent GetDataPackage packet to AP server.");
                     }
                 },
-                [this](const messages::ReceivedItem& message) {
+                [this](const messages::ReceivedItems& message) {
                     if (message.index == archipelago_save_data->last_item_index + 1) {
                         give_item(message.items[0]);
                         archipelago_save_data->last_item_index++;
@@ -462,9 +464,9 @@ namespace randomizer::archipelago {
                     }
                 },
                 [](const messages::PrintJSON& message) {
-                    for (const std::string& text: message.data) {
+                    for (auto& print_text : message.data) {
                         core::message_controller().queue_central({
-                            .text = core::Property<std::string>(text),
+                            .text = core::Property<std::string>(print_text.text),
                             .show_box = true,
                         });
                         // TODO: Use type for different formatting

@@ -19,8 +19,8 @@ namespace randomizer::archipelago::messages {
             return message.get<RoomInfo>();
         }
 
-        if (command == "ReceivedItem") {
-            return message.get<ReceivedItem>();
+        if (command == "ReceivedItems") {
+            return message.get<ReceivedItems>();
         }
 
         if (command == "LocationInfo") {
