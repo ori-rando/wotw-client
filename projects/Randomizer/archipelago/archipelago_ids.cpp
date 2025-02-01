@@ -67,9 +67,9 @@ namespace randomizer::archipelago::ids {
     archipelago_id_t get_location_id(const location_data::Location& location) {
         assert(location.condition.value <= 0b11111111);
         assert(location.condition.state.state() <= 0b11111111'11111111);
-
-        const archipelago_id_t group = (location.condition.state.group_int() & 0b11111111) << 24;
-        const archipelago_id_t state = (location.condition.state.state() & 0b11111111'11111111) << 8;
+        
+        const archipelago_id_t group = static_cast<uint32_t>((location.condition.state.group_int() & 0b11111111) << 24);
+        const archipelago_id_t state = static_cast<uint32_t>((location.condition.state.state() & 0b11111111'11111111) << 8);
         const auto value = static_cast<archipelago_id_t>(location.condition.value);
 
         return BASE_ID + (static_cast<archipelago_id_t>(IdType::Location) << 32) + group + state + value;

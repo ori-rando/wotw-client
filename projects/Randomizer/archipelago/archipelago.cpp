@@ -196,10 +196,10 @@ namespace randomizer::archipelago {
         };
         ids::archipelago_id_t location_id{ids::get_location_id(location)};
         m_cached_locations.insert(location_id); // Stores the locations that are checked, but not yet validated by the server: useful for resync
-        send_message(messages::LocationChecks{m_cached_locations, "LocationChecks"}); // TODO send a vector instead ?
+        send_message(messages::LocationChecks{m_cached_locations, "LocationChecks"});
         modloader::info(
             "archipelago",
-            std::format("Location checked. State: {}, Group: {}, Value: {}.", params.state.state(), params.state.group_int(), params.value)
+            std::format("Location checked. Group: {}, State: {}, Value: {}.", params.state.group_int(), params.state.state(), params.value)
         );
     }
 
@@ -210,33 +210,40 @@ namespace randomizer::archipelago {
 
     void ArchipelagoClient::update_data_package(const std::unordered_map<std::string, messages::GameData>& new_data) {
         for (auto& [game, data]: new_data) {
-            m_data_package_cache.insert_or_assign(game, data);
-            m_item_id_to_name.insert_or_assign(game, parse_data_package(data.item_name_to_id));
-            m_location_id_to_name.insert_or_assign(game, parse_data_package(data.location_name_to_id));
+            m_data_package_cache[game] = data;
+            m_item_id_to_name[game] = parse_data_package(data.item_name_to_id);
+            m_location_id_to_name[game] = parse_data_package(data.location_name_to_id);
             modloader::info("archipelago", std::format("Data packages for {} updated.", game));
         }
-        write_file(m_data_package_cache, "ap_data_package.json");
-        write_file(m_item_id_to_name, "ap_item_id_to_name.json");
-        write_file(m_location_id_to_name, "ap_location_id_to_name.json");
+        write_file(nlohmann::json(m_data_package_cache), "ap_data_package.json");
+        write_file(nlohmann::json(m_item_id_to_name), "ap_item_id_to_name.json");
+        write_file(nlohmann::json(m_location_id_to_name), "ap_location_id_to_name.json");
     }
 
     ArchipelagoClient::IdToName ArchipelagoClient::parse_data_package(const std::unordered_map<std::string, ids::archipelago_id_t>& data) {
         ArchipelagoClient::IdToName parsed_data;
         for (auto& [name, id]: data) {
-            parsed_data.insert_or_assign(id, name);
+            parsed_data[id] = name;
         }
         return parsed_data;
     }
 
-    std::string ArchipelagoClient::get_item_name(const archipelago::messages::NetworkItem& item) {
+    std::string ArchipelagoClient::get_item_name(const archipelago::messages::NetworkItem& item, bool is_local) {
         messages::NetworkPlayer player = m_player_map[item.player];
-        std::string game = m_slots[std::to_string(player.slot)].game;
+        std::string game;
+        if (is_local) {  // When receiving items
+            game = "Ori and the Will of the Wisps";
+        }
+        else {  // When sending items
+            game = m_slots[std::to_string(player.slot)].game;
+        }
+        modloader::info("player", std::format("Slot: {}, game:{}", player.slot, game));
         auto existing_it = m_item_id_to_name[game].find(item.item);
         if (existing_it != m_item_id_to_name[game].end()) {
             return m_item_id_to_name[game][item.item];
         } else {
             modloader::error("archipelago", std::format("Failed to convert item ID {} from game {} to its name.", item.item, game));
-            return std::format("Unknown item name from {}.", game);
+            return std::format("Unknown item name from {}", game);
         };
     }
 
@@ -262,7 +269,23 @@ namespace randomizer::archipelago {
         std::variant<ids::Location, ids::BooleanItem, ids::ResourceItem, ids::UpgradeItem> item = ids::get_item(net_item.item);
         item |
             vx::match{
-                [](const ids::BooleanItem& item) { core::api::uber_states::UberState{item.uber_group, item.uber_state}.set(true); },
+                [](const ids::BooleanItem& item) {
+                    // TODO remove debug
+                    if (item.uber_group == 24 & item.uber_state == 101) {
+                        modloader::info("Burrow", "Burrow");
+                        core::api::uber_states::UberState{24, 102}.set(true);
+                        modloader::info("Burrow", "Dash");
+                        core::api::uber_states::UberState{24, 101}.set(true);
+                    }
+                    else {
+                        core::api::uber_states::UberState{item.uber_group, item.uber_state}.set(true);
+                    }
+                    if (item.uber_group == 6) {  // Clean Water
+                        core::api::uber_states::UberState{937, 34641}.set(true);
+                        core::api::uber_states::UberState{37858, 12379}.set(true);
+                        core::api::uber_states::UberState{37858, 10720}.set(true);
+                    }
+                },
                 [](const ids::UpgradeItem& item) {
                     std::vector<core::api::uber_states::UberState> item_uberstates;
                     item_uberstates.emplace_back(item.uber_group, item.uber_state);
@@ -350,9 +373,9 @@ namespace randomizer::archipelago {
                     modloader::error("archipelago", std::format("AP ID {} corresponds to a location, expected an item.", net_item.item));
                 },
             };
-        modloader::info("archipelago", std::format("Received item: {} from {}.", get_item_name(net_item), get_player_name(net_item.player)));
+        modloader::info("archipelago", std::format("Received item: {} from {}.", get_item_name(net_item, true), get_player_name(net_item.player)));
         core::message_controller().queue_central({
-            .text = core::Property<std::string>(std::format("{} from {}.", get_item_name(net_item), get_player_name(net_item.player))),
+            .text = core::Property<std::string>(std::format("{} from {}.", get_item_name(net_item, true), get_player_name(net_item.player))),
             .show_box = true,
         });
     }
@@ -371,6 +394,7 @@ namespace randomizer::archipelago {
     void ArchipelagoClient::write_file(const nlohmann::json& data, const std::string& file_name) {
         std::ofstream o(modloader::base_path() / file_name);
         o << std::setw(4) << data << std::endl;
+        modloader::info("Data", data.dump());
         modloader::info("archipelago", std::format("Write {} data package.", file_name));
     }
 
@@ -456,6 +480,7 @@ namespace randomizer::archipelago {
                             give_item(message.items[index]);
                             archipelago_save_data->last_item_index++;
                         }
+                        archipelago_save_data->last_item_index = message.index;
                     } else {
                         ask_resync();
                     }
@@ -464,7 +489,7 @@ namespace randomizer::archipelago {
                     for (const messages::NetworkItem item: message.locations) {
                         m_cached_locations.erase(item.location);
                         core::message_controller().queue_central({
-                            .text = core::Property<std::string>(std::format("{} sent to {}.", get_item_name(item), get_player_name(item.player))),
+                            .text = core::Property<std::string>(std::format("{} sent to {}.", get_item_name(item, false), get_player_name(item.player))),
                             .show_box = true,
                         });
                     }
