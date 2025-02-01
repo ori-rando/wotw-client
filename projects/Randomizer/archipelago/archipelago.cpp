@@ -89,6 +89,15 @@ namespace randomizer::archipelago {
             randomizer::archipelago_client().ask_resync();
         });
 
+    void apply_states() {
+        randomizer::archipelago_client().event_uber_states();
+    }
+
+    void apply_resources() {
+        randomizer::archipelago_client().event_resource();
+    }
+
+
     ArchipelagoClient::ArchipelagoClient() {
         m_websocket.setOnMessageCallback([this](const auto& msg) { on_websocket_message(msg); });
 
@@ -262,31 +271,84 @@ namespace randomizer::archipelago {
     void ArchipelagoClient::collect_location(const ids::archipelago_id_t location_id) {
         // Collect locations from RoomUpdate and Connected packets, useful for coop
         location_data::Location location{ids::get_location_from_id(location_id)};
-        core::api::uber_states::UberState(location.condition.state.group_int(), location.condition.state.state()).set(location.condition.value);
+        m_state_cache.emplace_back(location.condition.state, BooleanOperator::Greater, location.condition.value);
+        core::events::schedule_task_for_next_update(apply_states);
+    }
+
+    void ArchipelagoClient::event_uber_states() {
+        for (auto uber_state : m_state_cache) {
+            core::api::uber_states::UberState(uber_state.state).set(uber_state.value);
+        }
+        m_state_cache.clear();
+    }
+
+    void ArchipelagoClient::event_resource() {
+        for (auto resource : m_resource_cache) {
+            switch (resource.type) {
+                case ids::ResourceType::SpiritLight: {
+                    const auto& spirit_light = core::api::game::player::spirit_light();
+                    const auto& spirit_light_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 3);
+
+                    spirit_light.set(spirit_light.get() + resource.value);
+                    //spirit_light_collected.set<int>(spirit_light_collected.get<int>() + resource.value);
+                    break;
+                }
+                case ids::ResourceType::GorlekOre: {
+                    const auto& gorlek_ore = core::api::game::player::ore();
+                    const auto& gorlek_ore_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 5);
+
+                    gorlek_ore.set(gorlek_ore.get() + 1);
+                    gorlek_ore_collected.set<int>(gorlek_ore_collected.get<int>() + 1);
+                    break;
+                }
+                case ids::ResourceType::Keystone: {
+                    const auto& keystone = core::api::game::player::keystones();
+                    const auto& keystone_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 0);
+
+                    keystone.set(keystone.get() + 1);
+                    keystone_collected.set<int>(keystone_collected.get<int>() + 1);
+                    break;
+                }
+                case ids::ResourceType::ShardSlot: {
+                    const auto& shard_slot = core::api::game::player::shard_slots();
+
+                    shard_slot.set(shard_slot.get() + 1);
+                    break;
+                }
+                case ids::ResourceType::HealthFragment: {
+                    const auto& max_health = core::api::game::player::max_health();
+                    const auto& health = core::api::game::player::health();
+
+                    max_health.set(max_health.get() + 5);
+                    health.set(static_cast<float>(max_health.get()));
+                    break;
+                }
+                case ids::ResourceType::EnergyFragment: {
+                    const auto& max_energy = core::api::game::player::max_energy();
+                    const auto& energy = core::api::game::player::energy();
+
+                    max_energy.set(max_energy.get() + 0.5f);
+                    energy.set(max_energy.get());
+                    break;
+                }
+            }
+        }
+        m_resource_cache.clear();
     }
 
     void ArchipelagoClient::give_item(archipelago::messages::NetworkItem const& net_item) {
         std::variant<ids::Location, ids::BooleanItem, ids::ResourceItem, ids::UpgradeItem> item = ids::get_item(net_item.item);
         item |
             vx::match{
-                [](const ids::BooleanItem& item) {
-                    // TODO remove debug
-                    if (item.uber_group == 24 & item.uber_state == 101) {
-                        modloader::info("Burrow", "Burrow");
-                        core::api::uber_states::UberState{24, 102}.set(true);
-                        modloader::info("Burrow", "Dash");
-                        core::api::uber_states::UberState{24, 101}.set(true);
-                    }
-                    else {
-                        core::api::uber_states::UberState{item.uber_group, item.uber_state}.set(true);
-                    }
+                [this](const ids::BooleanItem& item) {
+                    m_state_cache.emplace_back(item.uber_group, item.uber_state, BooleanOperator::Greater, true);
                     if (item.uber_group == 6) {  // Clean Water
-                        core::api::uber_states::UberState{937, 34641}.set(true);
-                        core::api::uber_states::UberState{37858, 12379}.set(true);
-                        core::api::uber_states::UberState{37858, 10720}.set(true);
+                        m_state_cache.emplace_back(937, 34641, BooleanOperator::Greater, true);
+                        m_state_cache.emplace_back(37858, 12379, BooleanOperator::Greater, true);
+                        m_state_cache.emplace_back(37858, 10720, BooleanOperator::Greater, true);
                     }
                 },
-                [](const ids::UpgradeItem& item) {
+                [this](const ids::UpgradeItem& item) {
                     std::vector<core::api::uber_states::UberState> item_uberstates;
                     item_uberstates.emplace_back(item.uber_group, item.uber_state);
                     if (item.uber_group == static_cast<int16_t>(UberStateGroup::RandoUpgrade)) {
@@ -316,58 +378,13 @@ namespace randomizer::archipelago {
                         }
                     }
                     for (auto item_uberstate: item_uberstates) {
-                        item_uberstate.set(item_uberstate.get() + 1);
+                        m_state_cache.emplace_back(item_uberstate, BooleanOperator::Greater, item_uberstate.get() + 1);
                     }
+                    core::events::schedule_task_for_next_update(apply_states);
                 },
-                [](const ids::ResourceItem& item) {
-                    switch (item.type) {
-                        case ids::ResourceType::SpiritLight: {
-                            const auto& spirit_light = core::api::game::player::spirit_light();
-                            const auto& spirit_light_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 3);
-
-                            spirit_light.set(spirit_light.get() + item.value);
-                            spirit_light_collected.set<int>(spirit_light_collected.get<int>() + item.value);
-                            break;
-                        }
-                        case ids::ResourceType::GorlekOre: {
-                            const auto& gorlek_ore = core::api::game::player::ore();
-                            const auto& gorlek_ore_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 5);
-
-                            gorlek_ore.set(gorlek_ore.get() + 1);
-                            gorlek_ore_collected.set<int>(gorlek_ore_collected.get<int>() + 1);
-                            break;
-                        }
-                        case ids::ResourceType::Keystone: {
-                            const auto& keystone = core::api::game::player::keystones();
-                            const auto& keystone_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 0);
-
-                            keystone.set(keystone.get() + 1);
-                            keystone_collected.set<int>(keystone_collected.get<int>() + 1);
-                            break;
-                        }
-                        case ids::ResourceType::ShardSlot: {
-                            const auto& shard_slot = core::api::game::player::shard_slots();
-
-                            shard_slot.set(shard_slot.get() + 1);
-                            break;
-                        }
-                        case ids::ResourceType::HealthFragment: {
-                            const auto& max_health = core::api::game::player::max_health();
-                            const auto& health = core::api::game::player::health();
-
-                            max_health.set(max_health.get() + 5);
-                            health.set(static_cast<float>(max_health.get()));
-                            break;
-                        }
-                        case ids::ResourceType::EnergyFragment: {
-                            const auto& max_energy = core::api::game::player::max_energy();
-                            const auto& energy = core::api::game::player::energy();
-
-                            max_energy.set(max_energy.get() + 0.5f);
-                            energy.set(max_energy.get());
-                            break;
-                        }
-                    }
+                [this](const ids::ResourceItem& item) {
+                    m_resource_cache.emplace_back(item.type, item.value);
+                    core::events::schedule_task_for_next_update(apply_resources);
                 },
                 [net_item](const ids::Location& item) {
                     modloader::error("archipelago", std::format("AP ID {} corresponds to a location, expected an item.", net_item.item));
@@ -471,16 +488,17 @@ namespace randomizer::archipelago {
                     }
                 },
                 [this](const messages::ReceivedItems& message) {
+                    // TODO add the item index into the save file.
+                    modloader::info("Items", std::format("Message {} Save {}", message.index, archipelago_save_data->last_item_index));
                     if (message.index == archipelago_save_data->last_item_index + 1) {
                         give_item(message.items[0]);
-                        archipelago_save_data->last_item_index++;
+                        archipelago_save_data->last_item_index = message.index;
                     } else if (message.index == 0) {
                         // AP server sent all the received items, only add the new ones
                         for (int index{archipelago_save_data->last_item_index}; index < message.items.size(); ++index) {
                             give_item(message.items[index]);
-                            archipelago_save_data->last_item_index++;
                         }
-                        archipelago_save_data->last_item_index = message.index;
+                        archipelago_save_data->last_item_index = message.items.size() - 1;
                     } else {
                         ask_resync();
                     }
@@ -504,6 +522,7 @@ namespace randomizer::archipelago {
                     }
                 },
                 [](const messages::PrintJSON& message) {
+                    /*
                     for (auto& print_text : message.data) {
                         core::message_controller().queue_central({
                             .text = core::Property<std::string>(print_text.text),
@@ -511,6 +530,7 @@ namespace randomizer::archipelago {
                         });
                         // TODO: Use type for different formatting
                     }
+                    */
                 },
                 [](const messages::InvalidPacket& message) {
                     modloader::error("archipelago", std::format("{}: Invalid packet sent {}: {}.", message.type, message.original_cmd, message.text));
@@ -521,6 +541,7 @@ namespace randomizer::archipelago {
 } // namespace randomizer::archipelago
 
 // TODO list:
-// Send a StatusUpdate packet when ready/playing (cf p19)
+// Make a queue for received messages (see Network.cpp with the mutex)
+// Save the item index
 // Formatting for PrintJSON
 // Add death link support (see core/api/game/death_listener + add the tag in Connect packet)

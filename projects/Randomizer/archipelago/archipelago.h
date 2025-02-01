@@ -13,6 +13,9 @@
 #include <Randomizer/archipelago/archipelago_protocol.h>
 
 namespace randomizer::archipelago {
+    void apply_states();
+    void apply_resources();
+
     class ArchipelagoClient {
     public:
         ArchipelagoClient();
@@ -22,6 +25,8 @@ namespace randomizer::archipelago {
         void location_handler(auto& params);
         void game_finished_handler();
         void ask_resync();
+        void event_uber_states();
+        void event_resource();
 
     private:
         template<typename Jsonable>
@@ -55,7 +60,8 @@ namespace randomizer::archipelago {
         std::unordered_map<std::string, messages::GameData> m_data_package_cache;
         std::filesystem::path m_data_package_path = "./archipelago/";
         std::unordered_map<int, messages::NetworkPlayer> m_player_map;
-
+        std::vector<core::api::uber_states::UberStateCondition> m_state_cache;
+        std::vector<ids::ResourceItem> m_resource_cache;
         std::unordered_map<std::string, IdToName> m_item_id_to_name;
         std::unordered_map<std::string, IdToName> m_location_id_to_name;
     };

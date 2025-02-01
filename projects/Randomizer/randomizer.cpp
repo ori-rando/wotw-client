@@ -178,7 +178,7 @@ namespace randomizer {
             // Connect the AP client if AP is in the flags
             auto seed_meta = randomizer_seed.info().meta;
             if (std::ranges::find(seed_meta.flags, "AP") != seed_meta.flags.end()) {
-                std::string url = "wss://" + seed_meta.archipelago_address.value_or("archipelago.gg") + ":" + seed_meta.archipelago_port.value_or("38281");
+                std::string url = std::format("wss://{}:{}/", seed_meta.archipelago_address.value_or("archipelago.gg"), seed_meta.archipelago_port.value_or("38281"));
                 archipelago_client().connect(url, seed_meta.archipelago_slot_name.value_or("empty_slot_name"), seed_meta.archipelago_password.value_or(""));
             }
         });
