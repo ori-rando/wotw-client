@@ -128,16 +128,16 @@ namespace randomizer::archipelago {
     bool ArchipelagoClient::is_connected() const { return m_websocket.getReadyState() == ix::ReadyState::Open; }
 
     void ArchipelagoClient::on_websocket_message(ix::WebSocketMessagePtr const& msg) {
-        // TODO remove debug
         switch (msg->type) {
             case ix::WebSocketMessageType::Message: {
+                modloader::info("archipelago", "Data package received");
                 auto message_string = msg.get()->str;
-                modloader::info("Received total message", message_string);
 
                 try {
                     nlohmann::json json = nlohmann::json::parse(message_string);
                     for (auto& packet : json) {
-                        modloader::info("Received single message", packet.dump());
+                        std::lock_guard guard(m_packet_mutex);
+                        m_packets.push_back(packet);
 
                         const auto message = messages::parse_server_message(packet);
 
@@ -148,6 +148,7 @@ namespace randomizer::archipelago {
                 } catch (nlohmann::json::exception& e) {
                     modloader::error("archipelago", std::format("Failed to parse message: {}, {}", e.what(), message_string));
                 }
+                m_packets.clear();
                 break;
             }
             case ix::WebSocketMessageType::Open: {
@@ -290,7 +291,7 @@ namespace randomizer::archipelago {
                     const auto& spirit_light_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 3);
 
                     spirit_light.set(spirit_light.get() + resource.value);
-                    //spirit_light_collected.set<int>(spirit_light_collected.get<int>() + resource.value);
+                    spirit_light_collected.set<int>(spirit_light_collected.get<int>() + resource.value);
                     break;
                 }
                 case ids::ResourceType::GorlekOre: {
@@ -391,6 +392,7 @@ namespace randomizer::archipelago {
                 },
             };
         modloader::info("archipelago", std::format("Received item: {} from {}.", get_item_name(net_item, true), get_player_name(net_item.player)));
+        queue_reach_check();
         core::message_controller().queue_central({
             .text = core::Property<std::string>(std::format("{} from {}.", get_item_name(net_item, true), get_player_name(net_item.player))),
             .show_box = true,
@@ -424,6 +426,7 @@ namespace randomizer::archipelago {
         message |
             vx::match{
                 [this](const messages::Connected& message) {
+                    modloader::info("archipelago", "Parsing Connected Packet");
                     m_player_map[0] = messages::NetworkPlayer{0, 0, "Archipelago", "Archipelago"};
                     for (auto& player : message.players) {
                         m_player_map[player.slot] = player;
@@ -438,6 +441,7 @@ namespace randomizer::archipelago {
                     });
                 },
                 [](const messages::ConnectionRefused& message) {
+                    modloader::info("archipelago", "Parsing ConnectionRefused Packet");
                     for (const std::string& error: message.errors) {
                         modloader::error("archipelago", std::format("Connection refused: {}.", error));
                         core::message_controller().queue_central({
@@ -447,6 +451,7 @@ namespace randomizer::archipelago {
                     }
                 },
                 [this](const messages::RoomInfo& message) {
+                    modloader::info("archipelago", "Parsing RoomInfo Packet");
                     modloader::info(
                         "archipelago", std::format("AP server version: {}.{}.{}", message.version.major, message.version.minor, message.version.build)
                     );
@@ -488,8 +493,7 @@ namespace randomizer::archipelago {
                     }
                 },
                 [this](const messages::ReceivedItems& message) {
-                    // TODO add the item index into the save file.
-                    modloader::info("Items", std::format("Message {} Save {}", message.index, archipelago_save_data->last_item_index));
+                    modloader::info("archipelago", "Parsing ReceivedItems Packet");
                     if (message.index == archipelago_save_data->last_item_index + 1) {
                         give_item(message.items[0]);
                         archipelago_save_data->last_item_index = message.index;
@@ -504,6 +508,7 @@ namespace randomizer::archipelago {
                     }
                 },
                 [this](const messages::LocationInfo& message) {
+                    modloader::info("archipelago", "Parsing LocationInfo Packet");
                     for (const messages::NetworkItem item: message.locations) {
                         m_cached_locations.erase(item.location);
                         core::message_controller().queue_central({
@@ -513,6 +518,7 @@ namespace randomizer::archipelago {
                     }
                 },
                 [this](const messages::RoomUpdate& message) {
+                    modloader::info("archipelago", "Parsing RoomUpdate Packet");
                     for (auto& player : message.players) {
                         m_player_map[player.slot] = player;
                     }
@@ -522,6 +528,7 @@ namespace randomizer::archipelago {
                     }
                 },
                 [](const messages::PrintJSON& message) {
+                    modloader::info("archipelago", "Parsing PrintJSON Packet");
                     /*
                     for (auto& print_text : message.data) {
                         core::message_controller().queue_central({
@@ -533,9 +540,13 @@ namespace randomizer::archipelago {
                     */
                 },
                 [](const messages::InvalidPacket& message) {
+                    modloader::info("archipelago", "Parsing InvalidPacket Packet");
                     modloader::error("archipelago", std::format("{}: Invalid packet sent {}: {}.", message.type, message.original_cmd, message.text));
                 },
-                [this](const messages::DataPackage& message) { update_data_package(message.data.games); },
+                [this](const messages::DataPackage& message) {
+                    modloader::info("archipelago", "Got DataPackage Packet");
+                    update_data_package(message.data.games);
+                },
             };
     }
 } // namespace randomizer::archipelago

@@ -32,9 +32,7 @@ namespace randomizer::archipelago {
         template<typename Jsonable>
         void send_message(const Jsonable& message) {
             const nlohmann::json json(message);
-            // TODO remove debug, improve style
-            modloader::info("Send message", "[" + json.dump() + "]");
-            m_websocket.send("[" + json.dump() + "]");
+            m_websocket.send("[" + json.dump() + "]");  // Not very good style, maybe improve it
         }
 
         using IdToName = std::unordered_map<ids::archipelago_id_t, std::string>;
@@ -64,5 +62,7 @@ namespace randomizer::archipelago {
         std::vector<ids::ResourceItem> m_resource_cache;
         std::unordered_map<std::string, IdToName> m_item_id_to_name;
         std::unordered_map<std::string, IdToName> m_location_id_to_name;
+        std::mutex m_packet_mutex;
+        std::vector<nlohmann::basic_json<>> m_packets;
     };
 } // namespace randomizer::archipelago
