@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Core/api/uber_states/uber_state.h>
 #include <Modloader/modloader.h>
 #include <IXWebSocket.h>
 #include <filesystem>
@@ -20,6 +19,9 @@ namespace randomizer::archipelago {
         void connect(std::string_view url, std::string_view slot_name, std::string_view password);
         void disconnect();
         bool is_connected() const;
+        void location_handler(auto& params);
+        void game_finished_handler();
+        void ask_resync();
 
     private:
         template<typename Jsonable>
@@ -43,17 +45,16 @@ namespace randomizer::archipelago {
         std::string get_location_name(ids::archipelago_id_t id, const std::string& game);
         void write_file(const nlohmann::json& data, const std::string& file_name);
         void read_data_package(const std::string& file_name, auto& data);
-        void ask_resync();
 
         bool m_should_connect = false;
         ix::WebSocket m_websocket;
         std::string m_slot_name; // aka player name
         std::string m_password;
         std::unordered_set<ids::archipelago_id_t> m_cached_locations;
-        std::vector<archipelago::messages::NetworkPlayer> m_players;
         std::unordered_map<std::string, archipelago::messages::NetworkSlot> m_slots;
         std::unordered_map<std::string, messages::GameData> m_data_package_cache;
         std::filesystem::path m_data_package_path = "./archipelago/";
+        std::unordered_map<int, messages::NetworkPlayer> m_player_map;
 
         std::unordered_map<std::string, IdToName> m_item_id_to_name;
         std::unordered_map<std::string, IdToName> m_location_id_to_name;

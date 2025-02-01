@@ -50,6 +50,45 @@ namespace randomizer::archipelago {
         core::save_meta::register_slot(SaveMetaSlot::ArchipelagoData, SaveMetaSlotPersistence::None, archipelago_save_data);
     });
 
+    // On game completion
+    [[maybe_unused]]
+    auto uber_state_bus_handle = core::api::uber_states::single_notification_bus().register_handler(
+        core::api::uber_states::UberState(34543, 11226),
+        [](const core::api::uber_states::UberStateCallbackParams& params, auto) {
+            if (params.state.get<bool>()) {
+                randomizer::archipelago_client().game_finished_handler();
+            }
+        }
+    );
+
+    // On location checked
+    [[maybe_unused]]
+    auto on_uber_state_changed = core::api::uber_states::notification_bus().register_handler([](auto params) {
+        auto existing_it = randomizer::archipelago::locations_set.find(core::api::uber_states::UberState(params.state));
+
+        if (existing_it != randomizer::archipelago::locations_set.end()) {
+            randomizer::archipelago_client().location_handler(params);
+        };
+    });
+
+    // Resync items
+    [[maybe_unused]]
+    auto on_new_game = core::api::game::event_bus().register_handler(GameEvent::NewGameInitialized, EventTiming::After, [](auto, auto) {
+            randomizer::archipelago_client().ask_resync();
+        });
+    [[maybe_unused]]
+    auto on_respawn = core::api::game::event_bus().register_handler(GameEvent::Respawn, EventTiming::After, [](auto, auto) {
+            randomizer::archipelago_client().ask_resync();
+        });
+    [[maybe_unused]]
+    auto on_restore_checkpoint = core::api::game::event_bus().register_handler(GameEvent::RestoreCheckpoint, EventTiming::After, [](auto, auto) {
+            randomizer::archipelago_client().ask_resync();
+        });
+    [[maybe_unused]]
+    auto on_save_loaded = core::api::game::event_bus().register_handler(GameEvent::FinishedLoadingSave, EventTiming::After, [](auto, auto) {
+            randomizer::archipelago_client().ask_resync();
+        });
+
     ArchipelagoClient::ArchipelagoClient() {
         m_websocket.setOnMessageCallback([this](const auto& msg) { on_websocket_message(msg); });
 
@@ -57,53 +96,6 @@ namespace randomizer::archipelago {
         read_data_package("ap_data_package.json", m_data_package_cache);
         read_data_package("ap_item_id_to_name.json", m_item_id_to_name);
         read_data_package("ap_location_id_to_name.json", m_location_id_to_name);
-
-        // On game completion
-        [[maybe_unused]]
-        auto uber_state_bus_handle = core::api::uber_states::single_notification_bus().register_handler(
-            core::api::uber_states::UberState(34543, 11226),
-            [this](const core::api::uber_states::UberStateCallbackParams& params, auto) {
-                if (params.state.get<bool>()) {
-                    send_message(messages::StatusUpdate{messages::ClientStatus::ClientGoal, "StatusUpdate"});
-                }
-            }
-        );
-
-        // On location checked
-        [[maybe_unused]]
-        auto on_uber_state_changed = core::api::uber_states::notification_bus().register_handler([this](auto params) {
-            auto existing_it = randomizer::archipelago::locations_set.find(core::api::uber_states::UberState(params.state));
-
-            if (existing_it != randomizer::archipelago::locations_set.end()) {
-                randomizer::location_data::Location location{
-                    "AP", // Dummy infos, only the uber states are used
-                    GameArea::Void,
-                    randomizer::location_data::LocationType::Unknown,
-                    core::api::uber_states::UberStateCondition(params.state, BooleanOperator::Greater, params.value)
-                };
-                ids::archipelago_id_t location_id{ids::get_location_id(location)};
-                m_cached_locations.insert(location_id); // Stores the locations that are checked, but not yet validated by the server: useful for resync
-                send_message(messages::LocationChecks{m_cached_locations, "LocationChecks"}); // TODO send a vector instead ?
-                modloader::info(
-                    "archipelago",
-                    std::format("Location checked. State: {}, Group: {}, Value: {}.", params.state.state(), params.state.group_int(), params.value)
-                );
-            };
-        });
-
-        // Resync items
-        [[maybe_unused]] auto on_new_game = core::api::game::event_bus().register_handler(
-            GameEvent::NewGameInitialized, EventTiming::After, [this](auto, auto) { ask_resync(); }
-        );
-        [[maybe_unused]] auto on_respawn(core::api::game::event_bus().register_handler(GameEvent::Respawn, EventTiming::After, [this](auto, auto) {
-            ask_resync();
-        }));
-        [[maybe_unused]] auto on_restore_checkpoint(
-            core::api::game::event_bus().register_handler(GameEvent::RestoreCheckpoint, EventTiming::After, [this](auto, auto) { ask_resync(); })
-        );
-        [[maybe_unused]] auto on_save_loaded(
-            core::api::game::event_bus().register_handler(GameEvent::FinishedLoadingSave, EventTiming::After, [this](auto, auto) { ask_resync(); })
-        );
     }
 
     void ArchipelagoClient::connect(const std::string_view url, const std::string_view slot_name, const std::string_view password) {
@@ -195,6 +187,27 @@ namespace randomizer::archipelago {
         }
     }
 
+    void ArchipelagoClient::location_handler(auto& params) {
+        randomizer::location_data::Location location{
+            "AP", // Dummy infos, only the uber states are used
+            GameArea::Void,
+            randomizer::location_data::LocationType::Unknown,
+            core::api::uber_states::UberStateCondition(params.state, BooleanOperator::Greater, params.value)
+        };
+        ids::archipelago_id_t location_id{ids::get_location_id(location)};
+        m_cached_locations.insert(location_id); // Stores the locations that are checked, but not yet validated by the server: useful for resync
+        send_message(messages::LocationChecks{m_cached_locations, "LocationChecks"}); // TODO send a vector instead ?
+        modloader::info(
+            "archipelago",
+            std::format("Location checked. State: {}, Group: {}, Value: {}.", params.state.state(), params.state.group_int(), params.value)
+        );
+    }
+
+    void ArchipelagoClient::game_finished_handler() {
+        send_message(messages::StatusUpdate{messages::ClientStatus::ClientGoal, "StatusUpdate"});
+    }
+
+
     void ArchipelagoClient::update_data_package(const std::unordered_map<std::string, messages::GameData>& new_data) {
         for (auto& [game, data]: new_data) {
             m_data_package_cache.insert_or_assign(game, data);
@@ -216,7 +229,7 @@ namespace randomizer::archipelago {
     }
 
     std::string ArchipelagoClient::get_item_name(const archipelago::messages::NetworkItem& item) {
-        messages::NetworkPlayer player = m_players[item.player];
+        messages::NetworkPlayer player = m_player_map[item.player];
         std::string game = m_slots[std::to_string(player.slot)].game;
         auto existing_it = m_item_id_to_name[game].find(item.item);
         if (existing_it != m_item_id_to_name[game].end()) {
@@ -227,7 +240,7 @@ namespace randomizer::archipelago {
         };
     }
 
-    std::string ArchipelagoClient::get_player_name(int player) { return m_players[player].alias; }
+    std::string ArchipelagoClient::get_player_name(int player) { return m_player_map[player].alias; }
 
     std::string ArchipelagoClient::get_location_name(ids::archipelago_id_t id, const std::string& game) {
         auto existing_it = m_location_id_to_name[game].find(id);
@@ -337,6 +350,7 @@ namespace randomizer::archipelago {
                     modloader::error("archipelago", std::format("AP ID {} corresponds to a location, expected an item.", net_item.item));
                 },
             };
+        modloader::info("archipelago", std::format("Received item: {} from {}.", get_item_name(net_item), get_player_name(net_item.player)));
         core::message_controller().queue_central({
             .text = core::Property<std::string>(std::format("{} from {}.", get_item_name(net_item), get_player_name(net_item.player))),
             .show_box = true,
@@ -369,17 +383,16 @@ namespace randomizer::archipelago {
         message |
             vx::match{
                 [this](const messages::Connected& message) {
-                    m_players = message.players;
+                    m_player_map[0] = messages::NetworkPlayer{0, 0, "Archipelago", "Archipelago"};
+                    for (auto& player : message.players) {
+                        m_player_map[player.slot] = player;
+                    }
                     m_slots = message.slot_info;
                     for (ids::archipelago_id_t location_id: message.checked_locations) {
                         collect_location(location_id);
                     }
                     core::message_controller().queue_central({
                         .text = core::Property<std::string>(std::format("Connected to Archipelago as {}.", m_slot_name)),
-                        .show_box = true,
-                    });
-                    core::message_controller().queue_central({
-                        .text = core::Property<std::string>(std::format("Current hint points: {}.", message.hint_points)),
                         .show_box = true,
                     });
                 },
@@ -457,7 +470,9 @@ namespace randomizer::archipelago {
                     }
                 },
                 [this](const messages::RoomUpdate& message) {
-                    m_players = message.players;
+                    for (auto& player : message.players) {
+                        m_player_map[player.slot] = player;
+                    }
                     for (ids::archipelago_id_t location_id: message.checked_locations) {
                         collect_location(location_id);
                         m_cached_locations.erase(location_id); // Remove location from the cache if it existed in it.
@@ -481,7 +496,6 @@ namespace randomizer::archipelago {
 } // namespace randomizer::archipelago
 
 // TODO list:
-// Add the client in the main loop (do it when AP is in the flags ?)
 // Send a StatusUpdate packet when ready/playing (cf p19)
 // Formatting for PrintJSON
 // Add death link support (see core/api/game/death_listener + add the tag in Connect packet)

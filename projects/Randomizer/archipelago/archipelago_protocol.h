@@ -203,7 +203,7 @@ namespace randomizer::archipelago::messages {
         std::vector<NetworkPlayer> players;
         std::vector<ids::archipelago_id_t> checked_locations;
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(RoomUpdate, players, checked_locations);
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(RoomUpdate, players, checked_locations);
     };
 
     struct PrintJSON {
