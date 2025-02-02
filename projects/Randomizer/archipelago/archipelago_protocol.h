@@ -17,8 +17,7 @@ namespace randomizer::archipelago::messages {
 
         // The macro cannot be used, because an argument is called class.
         template<typename BasicJsonType>
-        friend void to_json(BasicJsonType& nlohmann_json_j, const NetworkVersion& nlohmann_json_t)
-        {
+        friend void to_json(BasicJsonType& nlohmann_json_j, const NetworkVersion& nlohmann_json_t) {
             nlohmann_json_j["major"] = nlohmann_json_t.major;
             nlohmann_json_j["minor"] = nlohmann_json_t.minor;
             nlohmann_json_j["build"] = nlohmann_json_t.build;
@@ -26,8 +25,7 @@ namespace randomizer::archipelago::messages {
         }
 
         template<typename BasicJsonType>
-        friend void from_json(const BasicJsonType& nlohmann_json_j, NetworkVersion& nlohmann_json_t)
-        {
+        friend void from_json(const BasicJsonType& nlohmann_json_j, NetworkVersion& nlohmann_json_t) {
             nlohmann_json_t.major = nlohmann_json_j.at("major");
             nlohmann_json_t.minor = nlohmann_json_j.at("minor");
             nlohmann_json_t.build = nlohmann_json_j.at("build");
@@ -214,7 +212,7 @@ namespace randomizer::archipelago::messages {
 
     struct InvalidPacket {
         std::string type;
-        std::string original_cmd;  // TODO can be null, which causes the parsing to fail
+        std::string original_cmd; // TODO can be null, which causes the parsing to fail
         std::string text;
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(InvalidPacket, type, original_cmd, text);

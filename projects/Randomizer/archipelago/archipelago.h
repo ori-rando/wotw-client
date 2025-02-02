@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Modloader/modloader.h>
 #include <IXWebSocket.h>
 #include <filesystem>
 #include <nlohmann/json.hpp>
@@ -32,7 +31,7 @@ namespace randomizer::archipelago {
         template<typename Jsonable>
         void send_message(const Jsonable& message) {
             const nlohmann::json json(message);
-            m_websocket.send("[" + json.dump() + "]");  // Not very good style, maybe improve it
+            m_websocket.send("[" + json.dump() + "]"); // Not very good style, maybe improve it
         }
 
         using IdToName = std::unordered_map<ids::archipelago_id_t, std::string>;

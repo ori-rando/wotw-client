@@ -67,7 +67,7 @@ namespace randomizer::archipelago::ids {
     archipelago_id_t get_location_id(const location_data::Location& location) {
         assert(location.condition.value <= 0b11111111);
         assert(location.condition.state.state() <= 0b11111111'11111111);
-        
+
         const archipelago_id_t group = static_cast<uint32_t>((location.condition.state.group_int() & 0b11111111) << 24);
         const archipelago_id_t state = static_cast<uint32_t>((location.condition.state.state() & 0b11111111'11111111) << 8);
         const auto value = static_cast<archipelago_id_t>(location.condition.value);
@@ -76,7 +76,7 @@ namespace randomizer::archipelago::ids {
     }
 
     std::variant<Location, BooleanItem, ResourceItem, UpgradeItem> get_item(archipelago_id_t id) {
-        switch (static_cast<IdType>((id >> 32)%4)) {
+        switch (static_cast<IdType>((id >> 32) % 4)) {
             case IdType::Location: {
                 return Location{
                     static_cast<uint8_t>(id >> 24),

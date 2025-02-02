@@ -74,40 +74,36 @@ namespace randomizer::archipelago {
     // Resync items
     [[maybe_unused]]
     auto on_new_game = core::api::game::event_bus().register_handler(GameEvent::NewGameInitialized, EventTiming::After, [](auto, auto) {
-            randomizer::archipelago_client().ask_resync();
-        });
+        randomizer::archipelago_client().ask_resync();
+    });
     [[maybe_unused]]
     auto on_respawn = core::api::game::event_bus().register_handler(GameEvent::Respawn, EventTiming::After, [](auto, auto) {
-            randomizer::archipelago_client().ask_resync();
-        });
+        randomizer::archipelago_client().ask_resync();
+    });
     [[maybe_unused]]
     auto on_restore_checkpoint = core::api::game::event_bus().register_handler(GameEvent::RestoreCheckpoint, EventTiming::After, [](auto, auto) {
-            randomizer::archipelago_client().ask_resync();
-        });
+        randomizer::archipelago_client().ask_resync();
+    });
     [[maybe_unused]]
     auto on_save_loaded = core::api::game::event_bus().register_handler(GameEvent::FinishedLoadingSave, EventTiming::After, [](auto, auto) {
-            randomizer::archipelago_client().ask_resync();
-        });
+        randomizer::archipelago_client().ask_resync();
+    });
 
-    void apply_states() {
-        randomizer::archipelago_client().event_uber_states();
-    }
+    void apply_states() { randomizer::archipelago_client().event_uber_states(); }
 
-    void apply_resources() {
-        randomizer::archipelago_client().event_resource();
-    }
+    void apply_resources() { randomizer::archipelago_client().event_resource(); }
 
 
     ArchipelagoClient::ArchipelagoClient() {
         m_websocket.setOnMessageCallback([this](const auto& msg) { on_websocket_message(msg); });
+    }
 
+    void ArchipelagoClient::connect(const std::string_view url, const std::string_view slot_name, const std::string_view password) {
         // Load files for data packages
         read_data_package("ap_data_package.json", m_data_package_cache);
         read_data_package("ap_item_id_to_name.json", m_item_id_to_name);
         read_data_package("ap_location_id_to_name.json", m_location_id_to_name);
-    }
 
-    void ArchipelagoClient::connect(const std::string_view url, const std::string_view slot_name, const std::string_view password) {
         m_slot_name = slot_name;
         m_password = password;
         m_websocket.stop();
@@ -135,7 +131,7 @@ namespace randomizer::archipelago {
 
                 try {
                     nlohmann::json json = nlohmann::json::parse(message_string);
-                    for (auto& packet : json) {
+                    for (auto& packet: json) {
                         std::lock_guard guard(m_packet_mutex);
                         m_packets.push_back(packet);
 
@@ -156,17 +152,19 @@ namespace randomizer::archipelago {
 
                 const uuids::uuid uuid = uuids::uuid_system_generator{}();
 
-                send_message(messages::Connect{
-                    m_password,
-                    "Ori and the Will of the Wisps",
-                    m_slot_name,
-                    uuids::to_string(uuid),
-                    messages::NetworkVersion{0, 5, 0, "Version"},
-                    0b111,
-                    {"AP"},
-                    false,
-                    "Connect",
-                });
+                send_message(
+                    messages::Connect{
+                        m_password,
+                        "Ori and the Will of the Wisps",
+                        m_slot_name,
+                        uuids::to_string(uuid),
+                        messages::NetworkVersion{0, 5, 0, "Version"},
+                        0b111,
+                        {"AP"},
+                        false,
+                        "Connect",
+                }
+                );
                 break;
             }
             case ix::WebSocketMessageType::Close: {
@@ -208,14 +206,11 @@ namespace randomizer::archipelago {
         m_cached_locations.insert(location_id); // Stores the locations that are checked, but not yet validated by the server: useful for resync
         send_message(messages::LocationChecks{m_cached_locations, "LocationChecks"});
         modloader::info(
-            "archipelago",
-            std::format("Location checked. Group: {}, State: {}, Value: {}.", params.state.group_int(), params.state.state(), params.value)
+            "archipelago", std::format("Location checked. Group: {}, State: {}, Value: {}.", params.state.group_int(), params.state.state(), params.value)
         );
     }
 
-    void ArchipelagoClient::game_finished_handler() {
-        send_message(messages::StatusUpdate{messages::ClientStatus::ClientGoal, "StatusUpdate"});
-    }
+    void ArchipelagoClient::game_finished_handler() { send_message(messages::StatusUpdate{messages::ClientStatus::ClientGoal, "StatusUpdate"}); }
 
 
     void ArchipelagoClient::update_data_package(const std::unordered_map<std::string, messages::GameData>& new_data) {
@@ -241,10 +236,9 @@ namespace randomizer::archipelago {
     std::string ArchipelagoClient::get_item_name(const archipelago::messages::NetworkItem& item, bool is_local) {
         messages::NetworkPlayer player = m_player_map[item.player];
         std::string game;
-        if (is_local) {  // When receiving items
+        if (is_local) { // When receiving items
             game = "Ori and the Will of the Wisps";
-        }
-        else {  // When sending items
+        } else { // When sending items
             game = m_slots[std::to_string(player.slot)].game;
         }
         modloader::info("player", std::format("Slot: {}, game:{}", player.slot, game));
@@ -277,14 +271,14 @@ namespace randomizer::archipelago {
     }
 
     void ArchipelagoClient::event_uber_states() {
-        for (auto uber_state : m_state_cache) {
+        for (auto uber_state: m_state_cache) {
             core::api::uber_states::UberState(uber_state.state).set(uber_state.value);
         }
         m_state_cache.clear();
     }
 
     void ArchipelagoClient::event_resource() {
-        for (auto resource : m_resource_cache) {
+        for (auto resource: m_resource_cache) {
             switch (resource.type) {
                 case ids::ResourceType::SpiritLight: {
                     const auto& spirit_light = core::api::game::player::spirit_light();
@@ -343,9 +337,8 @@ namespace randomizer::archipelago {
             vx::match{
                 [this](const ids::BooleanItem& item) {
                     m_state_cache.emplace_back(item.uber_group, item.uber_state, BooleanOperator::Greater, true);
-                    if (item.uber_group == 6) {  // Clean Water
+                    if (item.uber_group == 6) { // Clean Water
                         m_state_cache.emplace_back(937, 34641, BooleanOperator::Greater, true);
-                        m_state_cache.emplace_back(37858, 12379, BooleanOperator::Greater, true);
                         m_state_cache.emplace_back(37858, 10720, BooleanOperator::Greater, true);
                     }
                 },
@@ -428,7 +421,7 @@ namespace randomizer::archipelago {
                 [this](const messages::Connected& message) {
                     modloader::info("archipelago", "Parsing Connected Packet");
                     m_player_map[0] = messages::NetworkPlayer{0, 0, "Archipelago", "Archipelago"};
-                    for (auto& player : message.players) {
+                    for (auto& player: message.players) {
                         m_player_map[player.slot] = player;
                     }
                     m_slots = message.slot_info;
@@ -519,7 +512,7 @@ namespace randomizer::archipelago {
                 },
                 [this](const messages::RoomUpdate& message) {
                     modloader::info("archipelago", "Parsing RoomUpdate Packet");
-                    for (auto& player : message.players) {
+                    for (auto& player: message.players) {
                         m_player_map[player.slot] = player;
                     }
                     for (ids::archipelago_id_t location_id: message.checked_locations) {
