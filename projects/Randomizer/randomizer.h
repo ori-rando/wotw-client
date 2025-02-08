@@ -45,6 +45,7 @@ namespace randomizer {
     seed::Seed& game_seed();
     online::NetworkClient& network_client();
     archipelago::ArchipelagoClient& archipelago_client();
+    void connect_ap_client();
     online::MultiplayerUniverse& multiplayer_universe();
     std::shared_ptr<core::text::CompositeTextProcessor> general_text_processor();
     std::shared_ptr<seed::SeedSource> get_new_game_seed_source();

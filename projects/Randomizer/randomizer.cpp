@@ -93,12 +93,14 @@ namespace randomizer {
             return true;
         }
 
+        [[maybe_unused]]
         auto on_before_shutdown = core::api::game::event_bus().register_handler(GameEvent::Shutdown, EventTiming::Before, [](auto, auto) {
             server_disconnect();
-            archipelago_client().disconnect();
+            ap_client.disconnect();
         });
 
         std::vector<std::function<void()>> input_unlocked_callbacks;
+        [[maybe_unused]]
         auto on_input_locked_handler = core::api::game::event_bus().register_handler(GameEvent::FixedUpdate, EventTiming::After, [](auto, auto) {
             if (!core::api::game::player::can_move()) {
                 return;
@@ -111,6 +113,7 @@ namespace randomizer {
             input_unlocked_callbacks.clear();
         });
 
+        [[maybe_unused]]
         auto on_after_new_game_initialized = core::api::game::event_bus().register_handler(GameEvent::NewGameInitialized, EventTiming::After, [](auto, auto) {
             core::message_controller().clear_recent_messages();
 
@@ -134,15 +137,18 @@ namespace randomizer {
             game::pickups::quests::clear_queued_quest_messages_on_next_update();
         });
 
+        [[maybe_unused]]
         auto on_respawn = core::api::game::event_bus().register_handler(GameEvent::Respawn, EventTiming::After, [](auto, auto) {
             core::message_controller().clear_central();
             queue_reach_check();
         });
 
+        [[maybe_unused]]
         auto on_before_seed_loaded = randomizer::event_bus().register_handler(randomizer::RandomizerEvent::SeedLoaded, EventTiming::Before, [](auto, auto) {
             core::text::reset_to_default_values();
         });
 
+        [[maybe_unused]]
         auto on_after_seed_loaded = event_bus().register_handler(RandomizerEvent::SeedLoaded, EventTiming::After, [](auto, auto) {
             universe.uber_state_handler().clear_unsyncables();
             features::wheel::clear_wheels();
@@ -153,6 +159,12 @@ namespace randomizer {
             queue_reach_check();
             event_bus().trigger_event(RandomizerEvent::SeedLoadedPostGrant, EventTiming::Before);
             event_bus().trigger_event(RandomizerEvent::SeedLoadedPostGrant, EventTiming::After);
+
+            // Connect the AP client if AP is in the flags
+            auto seed_meta = randomizer_seed.info().meta;
+            if (std::ranges::find(seed_meta.flags, "AP") != seed_meta.flags.end() & !ap_client.is_connected()) {
+                connect_ap_client();
+            }
         });
 
         void load_seed(const bool show_message) {
@@ -166,6 +178,7 @@ namespace randomizer {
             randomizer_seed.read(seed_save_data->seed_content, seed::legacy_parser::parse, show_message);
         }
 
+        [[maybe_unused]]
         auto on_before_new_game_initialized = core::api::game::event_bus().register_handler(GameEvent::NewGameInitialized, EventTiming::Before, [](auto, auto) {
             pause_timer = true;
 
@@ -175,21 +188,9 @@ namespace randomizer {
 
             core::api::game::player::shard_slots().set(3);
 
-            // Connect the AP client if AP is in the flags
-            auto seed_meta = randomizer_seed.info().meta;
-            if (std::ranges::find(seed_meta.flags, "AP") != seed_meta.flags.end()) {
-                std::string url;
-                if (seed_meta.archipelago_address.value_or("archipelago.gg") == "archipelago.gg") {
-                    url = std::format("wss://archipelago.gg:{}/", seed_meta.archipelago_port.value_or("38281"));
-                }
-                else {
-                    url = std::format("ws://{}:{}/", seed_meta.archipelago_address.value, seed_meta.archipelago_port.value_or("38281"));
-                }
-                modloader::info("archipelago", std::format("Opening websocket to {}", url));
-                archipelago_client().connect(url, seed_meta.archipelago_slot_name.value_or("empty_slot_name"), seed_meta.archipelago_password.value_or(""));
-            }
         });
 
+        [[maybe_unused]]
         auto on_fixed_update = core::api::game::event_bus().register_handler(GameEvent::FixedUpdate, EventTiming::Before, [](auto, auto) {
             if (reach_check_queued && do_reach_check()) {
                 reach_check_queued = false;
@@ -202,6 +203,7 @@ namespace randomizer {
             game_seed().process_timers(delta_time);
         });
 
+        [[maybe_unused]]
         auto on_finished_loading_save_handle = core::api::game::event_bus().register_handler(
             GameEvent::FinishedLoadingSave,
             EventTiming::After,
@@ -212,16 +214,19 @@ namespace randomizer {
             }
         );
 
+        [[maybe_unused]]
         auto on_restore_checkpoint = core::api::game::event_bus().register_handler(GameEvent::RestoreCheckpoint, EventTiming::After, [](auto, auto) {
             check_seed_difficulty_enforcement();
             randomizer_seed.grant(core::api::uber_states::UberState(UberStateGroup::RandoEvents, 7), 0);
             queue_reach_check();
         });
 
+        [[maybe_unused]]
         auto on_uber_state_changed = core::api::uber_states::notification_bus().register_handler([](auto params) {
             randomizer_seed.grant(params.state, params.previous_value);
         });
 
+        [[maybe_unused]]
         auto on_game_ready = modloader::event_bus().register_handler(ModloaderEvent::GameReady, [](auto) {
             monitor.display(&status);
             monitor.network_client(&client);
@@ -254,6 +259,7 @@ namespace randomizer {
             core::api::game::debug_menu::set_debug_enabled(core::settings::start_debug_enabled());
         }
 
+        [[maybe_unused]]
         auto on_title_screen_loaded = core::api::scenes::single_event_bus().register_handler("wotwTitleScreen", [](const auto meta_data, auto) {
             if (meta_data->state == app::SceneState__Enum::Loaded) {
                 randomizer_seed.clear();
@@ -405,6 +411,19 @@ namespace randomizer {
         static common::TimedMultiEventBus<RandomizerEvent> randomizer_event_bus;
         return randomizer_event_bus;
     }
+
+    void connect_ap_client() {
+        std::string url;
+        auto seed_meta = randomizer_seed.info().meta;
+        if (seed_meta.archipelago_address.value_or("archipelago.gg") == "archipelago.gg") {
+            url = std::format("wss://archipelago.gg:{}/", seed_meta.archipelago_port.value_or("38281"));
+        }
+        else {
+            url = std::format("ws://{}:{}/", seed_meta.archipelago_address.value_or("archipelago.gg"), seed_meta.archipelago_port.value_or("38281"));
+        }
+        modloader::info("archipelago", std::format("Opening websocket to {}", url));
+        archipelago_client().connect(url, seed_meta.archipelago_slot_name.value_or("empty_slot_name"), seed_meta.archipelago_password.value_or(""));
+    };
 
     location_data::LocationCollection& location_collection() { return randomizer_location_collection; }
 

@@ -74,6 +74,7 @@ namespace randomizer::archipelago {
     // Resync items
     [[maybe_unused]]
     auto on_new_game = core::api::game::event_bus().register_handler(GameEvent::NewGameInitialized, EventTiming::After, [](auto, auto) {
+        archipelago_client().set_last_index(0);
         randomizer::archipelago_client().ask_resync();
     });
     [[maybe_unused]]
@@ -88,10 +89,6 @@ namespace randomizer::archipelago {
     auto on_save_loaded = core::api::game::event_bus().register_handler(GameEvent::FinishedLoadingSave, EventTiming::After, [](auto, auto) {
         randomizer::archipelago_client().ask_resync();
     });
-
-    void apply_states() { randomizer::archipelago_client().event_uber_states(); }
-
-    void apply_resources() { randomizer::archipelago_client().event_resource(); }
 
 
     ArchipelagoClient::ArchipelagoClient() {
@@ -233,6 +230,14 @@ namespace randomizer::archipelago {
         return parsed_data;
     }
 
+    int ArchipelagoClient::get_last_index() {
+        return archipelago_save_data->last_item_index;
+    };
+
+    void ArchipelagoClient::set_last_index(int index) {
+        archipelago_save_data->last_item_index = index;
+    };
+
     std::string ArchipelagoClient::get_item_name(const archipelago::messages::NetworkItem& item, bool is_local) {
         messages::NetworkPlayer player = m_player_map[item.player];
         std::string game;
@@ -241,7 +246,6 @@ namespace randomizer::archipelago {
         } else { // When sending items
             game = m_slots[std::to_string(player.slot)].game;
         }
-        modloader::info("player", std::format("Slot: {}, game:{}", player.slot, game));
         auto existing_it = m_item_id_to_name[game].find(item.item);
         if (existing_it != m_item_id_to_name[game].end()) {
             return m_item_id_to_name[game][item.item];
@@ -265,19 +269,20 @@ namespace randomizer::archipelago {
 
     void ArchipelagoClient::collect_location(const ids::archipelago_id_t location_id) {
         // Collect locations from RoomUpdate and Connected packets, useful for coop
+        // TODO does not work
         location_data::Location location{ids::get_location_from_id(location_id)};
         m_state_cache.emplace_back(location.condition.state, BooleanOperator::Greater, location.condition.value);
-        core::events::schedule_task_for_next_update(apply_states);
+        core::events::schedule_task_for_next_update([this] {apply_uber_states();});
     }
 
-    void ArchipelagoClient::event_uber_states() {
+    void ArchipelagoClient::apply_uber_states() {
         for (auto uber_state: m_state_cache) {
             core::api::uber_states::UberState(uber_state.state).set(uber_state.value);
         }
         m_state_cache.clear();
     }
 
-    void ArchipelagoClient::event_resource() {
+    void ArchipelagoClient::apply_resources() {
         for (auto resource: m_resource_cache) {
             switch (resource.type) {
                 case ids::ResourceType::SpiritLight: {
@@ -374,11 +379,11 @@ namespace randomizer::archipelago {
                     for (auto item_uberstate: item_uberstates) {
                         m_state_cache.emplace_back(item_uberstate, BooleanOperator::Greater, item_uberstate.get() + 1);
                     }
-                    core::events::schedule_task_for_next_update(apply_states);
+                    core::events::schedule_task_for_next_update([this] {apply_uber_states();});
                 },
                 [this](const ids::ResourceItem& item) {
                     m_resource_cache.emplace_back(item.type, item.value);
-                    core::events::schedule_task_for_next_update(apply_resources);
+                    core::events::schedule_task_for_next_update([this] {apply_resources();});
                 },
                 [net_item](const ids::Location& item) {
                     modloader::error("archipelago", std::format("AP ID {} corresponds to a location, expected an item.", net_item.item));
@@ -392,7 +397,6 @@ namespace randomizer::archipelago {
         });
     }
 
-    // TODO Make a dummy file if it does not exist
     void ArchipelagoClient::read_data_package(const std::string& file_name, auto& data) {
         nlohmann::json j;
         if (!load_json_file(file_name, j)) {
@@ -487,15 +491,16 @@ namespace randomizer::archipelago {
                 },
                 [this](const messages::ReceivedItems& message) {
                     modloader::info("archipelago", "Parsing ReceivedItems Packet");
-                    if (message.index == archipelago_save_data->last_item_index + 1) {
+                    modloader::info("archipelago", std::format("Message index: {}, Saved index: {}", message.index, get_last_index()));
+                    if (message.index == get_last_index() + 1) {
                         give_item(message.items[0]);
-                        archipelago_save_data->last_item_index = message.index;
+                        set_last_index(message.index);
                     } else if (message.index == 0) {
                         // AP server sent all the received items, only add the new ones
-                        for (int index{archipelago_save_data->last_item_index}; index < message.items.size(); ++index) {
+                        for (int index{get_last_index()}; index < message.items.size(); ++index) {
                             give_item(message.items[index]);
                         }
-                        archipelago_save_data->last_item_index = message.items.size() - 1;
+                        set_last_index(static_cast<int>(message.items.size() - 1));
                     } else {
                         ask_resync();
                     }
@@ -537,7 +542,7 @@ namespace randomizer::archipelago {
                     modloader::error("archipelago", std::format("{}: Invalid packet sent {}: {}.", message.type, message.original_cmd, message.text));
                 },
                 [this](const messages::DataPackage& message) {
-                    modloader::info("archipelago", "Got DataPackage Packet");
+                    modloader::info("archipelago", "Parsing DataPackage Packet");
                     update_data_package(message.data.games);
                 },
             };
@@ -546,6 +551,6 @@ namespace randomizer::archipelago {
 
 // TODO list:
 // Make a queue for received messages (see Network.cpp with the mutex)
-// Save the item index
 // Formatting for PrintJSON
 // Add death link support (see core/api/game/death_listener + add the tag in Connect packet)
+// Clear the locations sets or do not remake them

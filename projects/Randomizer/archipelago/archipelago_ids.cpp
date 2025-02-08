@@ -98,6 +98,8 @@ namespace randomizer::archipelago::ids {
                         static_cast<uint16_t>(id >> 16),
                         static_cast<uint16_t>(id),
                     };
+                default: // Should never happen because of modulo 4, but it prevents a warning from the compiler
+                    throw std::runtime_error(std::format("Could not process archipelago id {}", id));
             }
         }
     }

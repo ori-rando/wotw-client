@@ -12,8 +12,6 @@
 #include <Randomizer/archipelago/archipelago_protocol.h>
 
 namespace randomizer::archipelago {
-    void apply_states();
-    void apply_resources();
 
     class ArchipelagoClient {
     public:
@@ -24,8 +22,8 @@ namespace randomizer::archipelago {
         void location_handler(auto& params);
         void game_finished_handler();
         void ask_resync();
-        void event_uber_states();
-        void event_resource();
+        int get_last_index();
+        void set_last_index(int last_index);
 
     private:
         template<typename Jsonable>
@@ -41,12 +39,14 @@ namespace randomizer::archipelago {
         void on_websocket_message(ix::WebSocketMessagePtr const& msg);
         void handle_server_message(messages::ap_server_message_t const& message);
         void update_data_package(const std::unordered_map<std::string, messages::GameData>& new_data);
-        IdToName parse_data_package(const std::unordered_map<std::string, ids::archipelago_id_t>& data);
+        static IdToName parse_data_package(const std::unordered_map<std::string, ids::archipelago_id_t>& data);
         std::string get_item_name(const archipelago::messages::NetworkItem& item, bool is_local);
         std::string get_player_name(int player);
         std::string get_location_name(ids::archipelago_id_t id, const std::string& game);
-        void write_file(const nlohmann::json& data, const std::string& file_name);
+        static void write_file(const nlohmann::json& data, const std::string& file_name);
         void read_data_package(const std::string& file_name, auto& data);
+        void apply_uber_states();
+        void apply_resources();
 
         bool m_should_connect = false;
         ix::WebSocket m_websocket;
