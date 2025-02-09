@@ -160,9 +160,7 @@ namespace randomizer {
             event_bus().trigger_event(RandomizerEvent::SeedLoadedPostGrant, EventTiming::Before);
             event_bus().trigger_event(RandomizerEvent::SeedLoadedPostGrant, EventTiming::After);
 
-            // Connect the AP client if AP is in the flags
-            auto seed_meta = randomizer_seed.info().meta;
-            if (std::ranges::find(seed_meta.flags, "AP") != seed_meta.flags.end() & !ap_client.is_connected()) {
+            if (should_use_ap_client() & !ap_client.is_connected()) {
                 connect_ap_client();
             }
         });
@@ -436,6 +434,7 @@ namespace randomizer {
     online::NetworkClient& network_client() { return client; }
 
     archipelago::ArchipelagoClient& archipelago_client() { return ap_client; }
+    bool should_use_ap_client() {return std::ranges::find(randomizer_seed.info().meta.flags, "AP") != randomizer_seed.info().meta.flags.end();}
 
     online::MultiplayerUniverse& multiplayer_universe() { return universe; }
 

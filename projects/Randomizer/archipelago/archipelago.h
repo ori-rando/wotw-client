@@ -22,8 +22,8 @@ namespace randomizer::archipelago {
         void location_handler(auto& params);
         void game_finished_handler();
         void ask_resync();
-        int get_last_index();
-        void set_last_index(int last_index);
+        static int get_last_index();
+        static void set_last_index(int index);
 
     private:
         template<typename Jsonable>
