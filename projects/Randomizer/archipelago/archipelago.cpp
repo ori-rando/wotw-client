@@ -485,8 +485,10 @@ namespace randomizer::archipelago {
                         std::format("Message index: {}, Saved index: {}, Message length {}", message.index, get_last_index(), message.items.size())
                     );
                     if (message.index == get_last_index() + 1) {
-                        give_item(message.items[0]);
-                        set_last_index(message.index);
+                        for (auto& item: message.items) {
+                            give_item(item);
+                            set_last_index(get_last_index() + 1);
+                        }
                     } else if (message.index == 0) {
                         // AP server sent all the received items, only add the new ones
                         int start_index = get_last_index() == 0 ? 0 : get_last_index() + 1;
@@ -564,6 +566,5 @@ namespace randomizer::archipelago {
 
 // TODO list:
 // Make a queue for received messages (see Network.cpp with the mutex)
-// Formatting for PrintJSON
 // Add death link support (see core/api/game/death_listener + add the tag in Connect packet)
 // Clear the locations sets or do not remake them
