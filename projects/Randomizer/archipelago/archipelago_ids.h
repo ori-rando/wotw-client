@@ -5,7 +5,7 @@
 #include <variant>
 
 namespace randomizer::archipelago::ids {
-    using archipelago_id_t = uint64_t;
+    using archipelago_id_t = int64_t;
 
     /**
      * Prefix (18 bits): "101111110010101001"
@@ -27,13 +27,14 @@ namespace randomizer::archipelago::ids {
 
     constexpr archipelago_id_t BASE_ID = 0b101111110010101001LL << 34; // ori (18 bit)
 
-    enum class IdType : int8_t {
+    enum class IdType : uint8_t {
         Location = 0b00,
         BooleanItem = 0b01,
         ResourceItem = 0b10,
+        UpgradeItem = 0b11,
     };
 
-    enum class ResourceType : int16_t {
+    enum class ResourceType : uint16_t {
         SpiritLight = 0b001,
         GorlekOre = 0b010,
         Keystone = 0b011,
@@ -43,23 +44,30 @@ namespace randomizer::archipelago::ids {
     };
 
     struct Location {
-        int8_t uber_group;
-        int16_t uber_state;
-        int8_t value;
+        uint8_t uber_group;
+        uint16_t uber_state;
+        uint8_t value;
     };
 
     struct BooleanItem {
-        int16_t uber_group;
-        int16_t uber_state;
+        uint16_t uber_group;
+        uint16_t uber_state;
     };
 
     struct ResourceItem {
         ResourceType type;
-        int16_t value;  // Only used for Spirit Light
+        uint16_t value; // Only used for Spirit Light
+    };
+
+    struct UpgradeItem {
+        uint16_t uber_group;
+        uint16_t uber_state;
     };
 
     archipelago_id_t get_boolean_item_id(int uber_group, int uber_state);
     archipelago_id_t get_resource_item_id(ResourceType type, int16_t value);
     archipelago_id_t get_location_id(const location_data::Location& location);
-    std::variant<Location, BooleanItem, ResourceItem> get_item(archipelago_id_t id);
+    archipelago_id_t get_upgrade_item_id(int uber_group, int uber_state);
+    std::variant<Location, BooleanItem, ResourceItem, UpgradeItem> get_item(archipelago_id_t id);
+    location_data::Location get_location_from_id(archipelago_id_t location_id);
 } // namespace randomizer::archipelago::ids

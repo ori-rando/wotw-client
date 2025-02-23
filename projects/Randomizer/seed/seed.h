@@ -92,6 +92,10 @@ namespace randomizer::seed {
             bool race_mode = false;
             GameDifficultySettings game_difficulties;
             std::optional<std::string> archipelago_slot_name = std::nullopt;
+            std::optional<std::string> archipelago_seed = std::nullopt;
+            std::optional<std::string> archipelago_port = std::nullopt;
+            std::optional<std::string> archipelago_password = std::nullopt;
+            std::optional<std::string> archipelago_address = std::nullopt;
         };
 
         struct SeedInfo {

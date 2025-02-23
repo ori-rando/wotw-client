@@ -2045,8 +2045,38 @@ namespace randomizer::seed::legacy_parser {
                     }
 
                     meta.start_position = position;
+                } else if (line.starts_with("APAddress:")) {
+                    if (trim_copy(line) == "APAddress:") {
+                        modloader::warn("archipelago", "APAddress is empty, defaulting to 'archipelago.gg'");
+                    }
+                    else {
+                        meta.archipelago_address = trim_copy(line.substr(10));
+                    }
+                } else if (line.starts_with("APPort:")) {
+                    if (trim_copy(line) == "APPort:") {
+                        modloader::warn("archipelago", "APPort is empty, defaulting to '38281'");
+                    }
+                    else {
+                        meta.archipelago_port = trim_copy(line.substr(7));
+                    }
+                } else if (line.starts_with("APPassword:")) {
+                    if (trim_copy(line) != "APPassword:") {
+                        meta.archipelago_password = trim_copy(line.substr(11));
+                    }
                 } else if (line.starts_with("APSlot:")) {
-                    meta.archipelago_slot_name = trim_copy(line.substr(sizeof("APSlot:")));
+                    if (trim_copy(line) == "APSlot:") {
+                        modloader::warn("archipelago", "APSlot is empty.");
+                    }
+                    else {
+                        meta.archipelago_slot_name = trim_copy(line.substr(7));
+                    }
+                } else if (line.starts_with("APSeed:")) {
+                    if (trim_copy(line) == "APSeed:") {
+                        modloader::warn("archipelago", "APSeed is empty.");
+                    }
+                    else {
+                        meta.archipelago_seed = trim_copy(line.substr(7));
+                    }
                 }
             }
         }
@@ -2132,8 +2162,38 @@ namespace randomizer::seed::legacy_parser {
                 }
 
                 data->info.meta.start_position = position;
+            } else if (line.starts_with("APAddress:")) {
+                if (trim_copy(line) == "APAddress:") {
+                    modloader::warn("archipelago", "APAddress is empty, defaulting to 'archipelago.gg'");
+                }
+                else {
+                    data->info.meta.archipelago_address = trim_copy(line.substr(10));
+                }
+            } else if (line.starts_with("APPort:")) {
+                if (trim_copy(line) == "APPort:") {
+                    modloader::warn("archipelago", "APPort is empty, defaulting to '38281'");
+                }
+                else {
+                    data->info.meta.archipelago_port = trim_copy(line.substr(7));
+                }
+            } else if (line.starts_with("APPassword:")) {
+                if (trim_copy(line) != "APPassword:") {
+                    data->info.meta.archipelago_password = trim_copy(line.substr(11));
+                }
             } else if (line.starts_with("APSlot:")) {
-                data->info.meta.archipelago_slot_name = trim_copy(line.substr(sizeof("APSlot:")));
+                if (trim_copy(line) == "APSlot:") {
+                    modloader::warn("archipelago", "APSlot is empty.");
+                }
+                else {
+                    data->info.meta.archipelago_slot_name = trim_copy(line.substr(7));
+                }
+            } else if (line.starts_with("APSeed:")) {
+                if (trim_copy(line) == "APSeed:") {
+                    modloader::warn("archipelago", "APSeed is empty.");
+                }
+                else {
+                    data->info.meta.archipelago_seed = trim_copy(line.substr(7));
+                }
             } else if (line.starts_with("timer:")) {
                 std::vector<std::string> parts;
                 auto timer_states = line.substr(6);

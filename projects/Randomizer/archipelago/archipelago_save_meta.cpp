@@ -6,7 +6,5 @@ namespace randomizer::archipelago {
         return j;
     }
 
-    void ArchipelagoSaveData::json_deserialize(nlohmann::json& j) {
-        j.get_to(*this);
-    }
-};
+    void ArchipelagoSaveData::json_deserialize(nlohmann::json& j) { j.get_to(*this); }
+}; // namespace randomizer::archipelago

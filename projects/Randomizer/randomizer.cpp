@@ -13,6 +13,7 @@
 #include <Modloader/app/types/GameController.h>
 #include <Modloader/app/types/UI_Hints.h>
 #include <Modloader/modloader.h>
+#include <Randomizer/archipelago/archipelago.h>
 #include <Randomizer/features/wheel.h>
 #include <Randomizer/game/pickups/quests.h>
 #include <Randomizer/game/shops/shop.h>
@@ -20,6 +21,7 @@
 #include <Randomizer/online/network_monitor.h>
 #include <Randomizer/randomizer.h>
 #include <Randomizer/seed/legacy_parser/parser.h>
+#include <Randomizer/seed/seed_source.h>
 #include <Randomizer/state_data/parser.h>
 #include <Randomizer/text_processors/ability.h>
 #include <Randomizer/text_processors/control.h>
@@ -33,7 +35,6 @@
 #include <fstream>
 #include <utility>
 
-#include "seed/seed_source.h"
 
 namespace randomizer {
     namespace {
@@ -44,6 +45,7 @@ namespace randomizer {
         online::NetworkClient client;
         online::MultiplayerUniverse universe;
         std::shared_ptr<core::text::CompositeTextProcessor> text_processor;
+        archipelago::ArchipelagoClient ap_client;
 
         online::NetworkMonitor monitor;
         core::dev::StatusDisplay status({
@@ -58,7 +60,7 @@ namespace randomizer {
         auto seed_save_data = std::make_shared<seed::SaveSlotSeedMetaData>();
 
         std::shared_ptr<seed::SeedSource> new_game_seed_source = std::make_shared<seed::EmptySeedSource>();
-        std::string new_game_seed_content;  // Set by spawning_and_preloading.cpp
+        std::string new_game_seed_content; // Set by spawning_and_preloading.cpp
 
         bool reach_check_queued = false;
         bool reach_check_in_progress = false;
@@ -91,11 +93,14 @@ namespace randomizer {
             return true;
         }
 
+        [[maybe_unused]]
         auto on_before_shutdown = core::api::game::event_bus().register_handler(GameEvent::Shutdown, EventTiming::Before, [](auto, auto) {
             server_disconnect();
+            ap_client.disconnect();
         });
 
         std::vector<std::function<void()>> input_unlocked_callbacks;
+        [[maybe_unused]]
         auto on_input_locked_handler = core::api::game::event_bus().register_handler(GameEvent::FixedUpdate, EventTiming::After, [](auto, auto) {
             if (!core::api::game::player::can_move()) {
                 return;
@@ -108,6 +113,7 @@ namespace randomizer {
             input_unlocked_callbacks.clear();
         });
 
+        [[maybe_unused]]
         auto on_after_new_game_initialized = core::api::game::event_bus().register_handler(GameEvent::NewGameInitialized, EventTiming::After, [](auto, auto) {
             core::message_controller().clear_recent_messages();
 
@@ -131,24 +137,32 @@ namespace randomizer {
             game::pickups::quests::clear_queued_quest_messages_on_next_update();
         });
 
+        [[maybe_unused]]
         auto on_respawn = core::api::game::event_bus().register_handler(GameEvent::Respawn, EventTiming::After, [](auto, auto) {
             core::message_controller().clear_central();
             queue_reach_check();
         });
 
+        [[maybe_unused]]
         auto on_before_seed_loaded = randomizer::event_bus().register_handler(randomizer::RandomizerEvent::SeedLoaded, EventTiming::Before, [](auto, auto) {
             core::text::reset_to_default_values();
         });
 
+        [[maybe_unused]]
         auto on_after_seed_loaded = event_bus().register_handler(RandomizerEvent::SeedLoaded, EventTiming::After, [](auto, auto) {
             universe.uber_state_handler().clear_unsyncables();
             features::wheel::clear_wheels();
             features::wheel::initialize_default_wheel();
             game::shops::reset_shop_data();
             randomizer_seed.grant(core::api::uber_states::UberState(UberStateGroup::RandoEvents, 1), 0);
+
             queue_reach_check();
             event_bus().trigger_event(RandomizerEvent::SeedLoadedPostGrant, EventTiming::Before);
             event_bus().trigger_event(RandomizerEvent::SeedLoadedPostGrant, EventTiming::After);
+
+            if (should_use_ap_client() & !ap_client.is_connected()) {
+                connect_ap_client();
+            }
         });
 
         void load_seed(const bool show_message) {
@@ -162,6 +176,7 @@ namespace randomizer {
             randomizer_seed.read(seed_save_data->seed_content, seed::legacy_parser::parse, show_message);
         }
 
+        [[maybe_unused]]
         auto on_before_new_game_initialized = core::api::game::event_bus().register_handler(GameEvent::NewGameInitialized, EventTiming::Before, [](auto, auto) {
             pause_timer = true;
 
@@ -170,8 +185,10 @@ namespace randomizer {
             load_seed(false);
 
             core::api::game::player::shard_slots().set(3);
+
         });
 
+        [[maybe_unused]]
         auto on_fixed_update = core::api::game::event_bus().register_handler(GameEvent::FixedUpdate, EventTiming::Before, [](auto, auto) {
             if (reach_check_queued && do_reach_check()) {
                 reach_check_queued = false;
@@ -184,6 +201,7 @@ namespace randomizer {
             game_seed().process_timers(delta_time);
         });
 
+        [[maybe_unused]]
         auto on_finished_loading_save_handle = core::api::game::event_bus().register_handler(
             GameEvent::FinishedLoadingSave,
             EventTiming::After,
@@ -194,16 +212,19 @@ namespace randomizer {
             }
         );
 
+        [[maybe_unused]]
         auto on_restore_checkpoint = core::api::game::event_bus().register_handler(GameEvent::RestoreCheckpoint, EventTiming::After, [](auto, auto) {
             check_seed_difficulty_enforcement();
             randomizer_seed.grant(core::api::uber_states::UberState(UberStateGroup::RandoEvents, 7), 0);
             queue_reach_check();
         });
 
+        [[maybe_unused]]
         auto on_uber_state_changed = core::api::uber_states::notification_bus().register_handler([](auto params) {
             randomizer_seed.grant(params.state, params.previous_value);
         });
 
+        [[maybe_unused]]
         auto on_game_ready = modloader::event_bus().register_handler(ModloaderEvent::GameReady, [](auto) {
             monitor.display(&status);
             monitor.network_client(&client);
@@ -236,6 +257,7 @@ namespace randomizer {
             core::api::game::debug_menu::set_debug_enabled(core::settings::start_debug_enabled());
         }
 
+        [[maybe_unused]]
         auto on_title_screen_loaded = core::api::scenes::single_event_bus().register_handler("wotwTitleScreen", [](const auto meta_data, auto) {
             if (meta_data->state == app::SceneState__Enum::Loaded) {
                 randomizer_seed.clear();
@@ -388,6 +410,19 @@ namespace randomizer {
         return randomizer_event_bus;
     }
 
+    void connect_ap_client() {
+        std::string url;
+        auto seed_meta = randomizer_seed.info().meta;
+        if (seed_meta.archipelago_address.value_or("archipelago.gg") == "archipelago.gg") {
+            url = std::format("wss://archipelago.gg:{}/", seed_meta.archipelago_port.value_or("38281"));
+        }
+        else {
+            url = std::format("ws://{}:{}/", seed_meta.archipelago_address.value_or("archipelago.gg"), seed_meta.archipelago_port.value_or("38281"));
+        }
+        modloader::info("archipelago", std::format("Opening websocket to {}", url));
+        archipelago_client().connect(url, seed_meta.archipelago_slot_name.value_or("empty_slot_name"), seed_meta.archipelago_password.value_or(""));
+    };
+
     location_data::LocationCollection& location_collection() { return randomizer_location_collection; }
 
     std::unordered_map<core::api::uber_states::UberStateCondition, std::string>& state_collection() { return randomizer_state_name_map; }
@@ -397,6 +432,9 @@ namespace randomizer {
     seed::ReachCheckResult const& reach_check() { return reach_check_result; }
 
     online::NetworkClient& network_client() { return client; }
+
+    archipelago::ArchipelagoClient& archipelago_client() { return ap_client; }
+    bool should_use_ap_client() {return std::ranges::find(randomizer_seed.info().meta.flags, "AP") != randomizer_seed.info().meta.flags.end();}
 
     online::MultiplayerUniverse& multiplayer_universe() { return universe; }
 

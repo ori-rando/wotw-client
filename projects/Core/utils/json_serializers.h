@@ -14,7 +14,7 @@
 #include <Modloader/app/structs/VerticalAnchorMode__Enum.h>
 #include <Modloader/app/structs/WorldMapIconType__Enum.h>
 
-CORE_DLLEXPORT bool load_json_file(std::string path, nlohmann::json& j);
+CORE_DLLEXPORT bool load_json_file(const std::string& path, nlohmann::json& j);
 
 namespace app {
     CORE_DLLEXPORT void to_json(nlohmann::json& j, const Vector2& s);
