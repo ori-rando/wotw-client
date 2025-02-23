@@ -271,60 +271,6 @@ namespace randomizer::archipelago {
         });
     }
 
-    void ArchipelagoClient::apply_resources() {
-        for (auto resource: m_resource_cache) {
-            switch (resource.type) {
-                case ids::ResourceType::SpiritLight: {
-                    const auto& spirit_light = core::api::game::player::spirit_light();
-                    const auto& spirit_light_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 3);
-
-                    spirit_light.set(spirit_light.get() + resource.value);
-                    spirit_light_collected.set<int>(spirit_light_collected.get<int>() + resource.value);
-                    break;
-                }
-                case ids::ResourceType::GorlekOre: {
-                    const auto& gorlek_ore = core::api::game::player::ore();
-                    const auto& gorlek_ore_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 5);
-
-                    gorlek_ore.set(gorlek_ore.get() + 1);
-                    gorlek_ore_collected.set<int>(gorlek_ore_collected.get<int>() + 1);
-                    break;
-                }
-                case ids::ResourceType::Keystone: {
-                    const auto& keystone = core::api::game::player::keystones();
-                    const auto& keystone_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 0);
-
-                    keystone.set(keystone.get() + 1);
-                    keystone_collected.set<int>(keystone_collected.get<int>() + 1);
-                    break;
-                }
-                case ids::ResourceType::ShardSlot: {
-                    const auto& shard_slot = core::api::game::player::shard_slots();
-
-                    shard_slot.set(shard_slot.get() + 1);
-                    break;
-                }
-                case ids::ResourceType::HealthFragment: {
-                    const auto& max_health = core::api::game::player::max_health();
-                    const auto& health = core::api::game::player::health();
-
-                    max_health.set(max_health.get() + 5);
-                    health.set(static_cast<float>(max_health.get()));
-                    break;
-                }
-                case ids::ResourceType::EnergyFragment: {
-                    const auto& max_energy = core::api::game::player::max_energy();
-                    const auto& energy = core::api::game::player::energy();
-
-                    max_energy.set(max_energy.get() + 0.5f);
-                    energy.set(max_energy.get());
-                    break;
-                }
-            }
-        }
-        m_resource_cache.clear();
-    }
-
     void ArchipelagoClient::give_item(messages::NetworkItem const& net_item) {
         std::variant<ids::Location, ids::BooleanItem, ids::ResourceItem, ids::UpgradeItem> item = ids::get_item(net_item.item);
         item |
@@ -366,8 +312,66 @@ namespace randomizer::archipelago {
                     }
                 },
                 [this](const ids::ResourceItem& item) {
-                    m_resource_cache.emplace_back(item.type, item.value);
-                    core::events::schedule_task_for_next_update([this] { apply_resources(); });
+                    switch (item.type) {
+                        case ids::ResourceType::SpiritLight: {
+                            core::events::schedule_task_for_next_update([&item] {
+                                const auto& spirit_light = core::api::game::player::spirit_light();
+                                const auto& spirit_light_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 3);
+            
+                                spirit_light.set(spirit_light.get() + item.value);
+                                spirit_light_collected.set<int>(spirit_light_collected.get<int>() + item.value);
+                            });
+                            break;
+                        }
+                        case ids::ResourceType::GorlekOre: {
+                            core::events::schedule_task_for_next_update([&item] {
+                                const auto& gorlek_ore = core::api::game::player::ore();
+                                const auto& gorlek_ore_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 5);
+            
+                                gorlek_ore.set(gorlek_ore.get() + 1);
+                                gorlek_ore_collected.set<int>(gorlek_ore_collected.get<int>() + 1);
+                            });
+                            break;
+                        }
+                        case ids::ResourceType::Keystone: {
+                            core::events::schedule_task_for_next_update([&item] {
+                                const auto& keystone = core::api::game::player::keystones();
+                                const auto& keystone_collected = core::api::uber_states::UberState(UberStateGroup::RandoStats, 0);
+            
+                                keystone.set(keystone.get() + 1);
+                                keystone_collected.set<int>(keystone_collected.get<int>() + 1);
+                            });
+                            break;
+                        }
+                        case ids::ResourceType::ShardSlot: {
+                            core::events::schedule_task_for_next_update([&item] {
+                                const auto& shard_slot = core::api::game::player::shard_slots();
+            
+                                shard_slot.set(shard_slot.get() + 1);
+                            });
+                            break;
+                        }
+                        case ids::ResourceType::HealthFragment: {
+                            core::events::schedule_task_for_next_update([&item] {
+                                const auto& max_health = core::api::game::player::max_health();
+                                const auto& health = core::api::game::player::health();
+            
+                                max_health.set(max_health.get() + 5);
+                                health.set(static_cast<float>(max_health.get()));
+                            });
+                            break;
+                        }
+                        case ids::ResourceType::EnergyFragment: {
+                            core::events::schedule_task_for_next_update([&item] {
+                                const auto& max_energy = core::api::game::player::max_energy();
+                                const auto& energy = core::api::game::player::energy();
+            
+                                max_energy.set(max_energy.get() + 0.5f);
+                                energy.set(max_energy.get());
+                            });
+                            break;
+                        }
+                    }
                 },
                 [net_item](const ids::Location& item) {
                     modloader::error("archipelago", std::format("AP ID {} corresponds to a location, expected an item.", net_item.item));
@@ -516,34 +520,34 @@ namespace randomizer::archipelago {
                 },
                 [this](const messages::PrintJSON& message) {
                     modloader::info("archipelago", "Parsing PrintJSON Packet");
-                    switch (message.type) {
-                        case "ItemSend" || "ItemCheat": {
-                            core::message_controller().queue_central({
-                                    .text = core::Property<std::string>(std::format("{} sent to {}.", get_item_name(message.item, false), get_player_name(message.receiving))),
-                                    .show_box = true,
-                                });
-                            break;
-                            }
-                        case "Hint": {
-                            core::message_controller().queue_central({
-                                    .text = core::Property<std::string>(std::format("{} for {} is in {}.", get_item_name(message.item, false), get_location_name(message.item.location, "Ori and the Will of the Wisps"))),
-                                    .show_box = true,
-                                });
-                            break;
-                        }
-                        case "Countdown": {
-                            core::message_controller().queue_central({
-                                .text = core::Property<std::string>(std::format("Countdown: {}", message.countdown)),
+                    if (message.type == "ItemSend" || message.type == "ItemCheat") {
+                        core::message_controller().queue_central({
+                                .text = core::Property<std::string>(std::format("{} sent to {}.", get_item_name(message.item, false), get_player_name(message.receiving))),
                                 .show_box = true,
-                            });
-                            break;
+                        });
+                    }
+                    else if (message.type == "Hint") {
+                        core::message_controller().queue_central({
+                                .text = core::Property<std::string>(std::format("{} for {} is in {}.", get_item_name(message.item, false), get_location_name(message.item.location, "Ori and the Will of the Wisps"))),
+                                .show_box = true,
+                        });
+                    }
+                    else if (message.type == "Countdown") {
+                        core::message_controller().queue_central({
+                            .text = core::Property<std::string>(std::format("Countdown: {}", message.countdown)),
+                            .show_box = true,
+                        });
+                    }
+                    else {
+                        std::string text = message.type;
+                        for (auto& print_text : message.data) {
+                            text += print_text.text;
                         }
-                        default: {
-                            std::string text = message.type;
-                            for (auto& print_text : message.data) {
-                                text += print_text.text;
-                            }
-                        }
+                        core::message_controller().queue_central({
+                            .text = core::Property<std::string>(text),
+                            .show_box = true,
+                        });
+                        modloader::info("archipelago", std::format("PrintJSON: {}", text));
                     }
                 },
                 [](const messages::InvalidPacket& message) {

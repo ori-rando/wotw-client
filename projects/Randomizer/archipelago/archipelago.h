@@ -46,7 +46,6 @@ namespace randomizer::archipelago {
         std::string get_location_name(ids::archipelago_id_t id, const std::string& game);
         static void write_file(const nlohmann::json& data, const std::string& file_name);
         void read_data_package(const std::string& file_name, auto& data);
-        void apply_resources();
         static void set_state(int group, int state, auto value);
 
         bool m_should_connect = false;
@@ -58,7 +57,6 @@ namespace randomizer::archipelago {
         std::unordered_map<std::string, messages::GameData> m_data_package_cache;
         std::filesystem::path m_data_package_path = "./archipelago/";
         std::unordered_map<int, messages::NetworkPlayer> m_player_map;
-        std::vector<ids::ResourceItem> m_resource_cache;
         std::unordered_map<std::string, IdToName> m_item_id_to_name;
         std::unordered_map<std::string, IdToName> m_location_id_to_name;
         std::mutex m_packet_mutex;

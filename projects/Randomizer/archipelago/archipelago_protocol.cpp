@@ -44,6 +44,7 @@ namespace randomizer::archipelago::messages {
         }
 
         modloader::warn("archipelago", std::format("Failed to parse server message: Unknown command {}", command));
+        modloader::info("archipelago", message.dump());
 
         return std::nullopt;
     }
