@@ -486,9 +486,6 @@ namespace randomizer::archipelago {
                     } else if (message.index == 0) {
                         // AP server sent all the received items, only add the new ones
                         int start_index = get_last_index() == 0 ? 0 : get_last_index() + 1;
-                        // TODO: remove the message grouping when the crash is fixed
-                        // Workaround, since displaying many messages at the same time makes a crash
-                        const int amount = static_cast<int>(start_index - message.items.size());
                         for (int index{start_index}; index < message.items.size(); ++index) {
                             give_item(message.items[index]);
                         }
@@ -517,17 +514,37 @@ namespace randomizer::archipelago {
                         m_cached_locations.erase(location_id); // Remove location from the cache if it existed in it.
                     }
                 },
-                [](const messages::PrintJSON& message) {
+                [this](const messages::PrintJSON& message) {
                     modloader::info("archipelago", "Parsing PrintJSON Packet");
-                    /*
-                    for (auto& print_text : message.data) {
-                        core::message_controller().queue_central({
-                            .text = core::Property<std::string>(print_text.text),
-                            .show_box = true,
-                        });
-                        // TODO: Use type for different formatting
+                    switch (message.type) {
+                        case "ItemSend" || "ItemCheat": {
+                            core::message_controller().queue_central({
+                                    .text = core::Property<std::string>(std::format("{} sent to {}.", get_item_name(message.item, false), get_player_name(message.receiving))),
+                                    .show_box = true,
+                                });
+                            break;
+                            }
+                        case "Hint": {
+                            core::message_controller().queue_central({
+                                    .text = core::Property<std::string>(std::format("{} for {} is in {}.", get_item_name(message.item, false), get_location_name(message.item.location, "Ori and the Will of the Wisps"))),
+                                    .show_box = true,
+                                });
+                            break;
+                        }
+                        case "Countdown": {
+                            core::message_controller().queue_central({
+                                .text = core::Property<std::string>(std::format("Countdown: {}", message.countdown)),
+                                .show_box = true,
+                            });
+                            break;
+                        }
+                        default: {
+                            std::string text = message.type;
+                            for (auto& print_text : message.data) {
+                                text += print_text.text;
+                            }
+                        }
                     }
-                    */
                 },
                 [](const messages::InvalidPacket& message) {
                     modloader::info("archipelago", "Parsing InvalidPacket Packet");

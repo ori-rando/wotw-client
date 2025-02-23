@@ -42,6 +42,7 @@ namespace randomizer::archipelago {
         static IdToName parse_data_package(const std::unordered_map<std::string, ids::archipelago_id_t>& data);
         std::string get_item_name(const messages::NetworkItem& item, bool is_local);
         std::string get_player_name(int player);
+
         std::string get_location_name(ids::archipelago_id_t id, const std::string& game);
         static void write_file(const nlohmann::json& data, const std::string& file_name);
         void read_data_package(const std::string& file_name, auto& data);

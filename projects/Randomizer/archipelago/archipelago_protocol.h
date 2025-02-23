@@ -206,8 +206,17 @@ namespace randomizer::archipelago::messages {
 
     struct PrintJSON {
         std::vector<JSONMessage> data;
+        std::string type;
+        int receiving;
+        NetworkItem item;
+        bool found;
+        int team;
+        int slot;
+        std::string message;
+        std::vector<std::string> tags;
+        int countdown;
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(PrintJSON, data);
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(PrintJSON, data, type, receiving, item, found, team, slot, message, tags, countdown);
     };
 
     struct InvalidPacket {
